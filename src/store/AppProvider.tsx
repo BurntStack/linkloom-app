@@ -1,0 +1,769 @@
+import React, { useCallback, useRef, useState } from 'react';
+import { CommonActions } from '@react-navigation/native';
+import { CREATORS, JOBS, LISTS, ORDERS, Creator, CreatorAccountProfile, Job, Bid } from '../data';
+import {
+  addCreatorToList,
+  addCartItem,
+  approveOrder as approveOrderRequest,
+  cancelOrder as cancelOrderRequest,
+  checkoutCart,
+  createCampaign,
+  createList,
+  closeCampaign,
+  createCreatorPackage,
+  createOffer,
+  deleteCreatorPackage,
+  deleteList,
+  disputeOrder as disputeOrderRequest,
+  getCart,
+  getBrandProfile,
+  getCampaignBids,
+  getCampaign,
+  getCampaigns,
+  getCreator,
+  getCreatorCampaigns,
+  getCreatorOffers,
+  getCreatorPackages,
+  getCreatorReviews,
+  getCreatorOrders,
+  getCreatorProfile,
+  getCurrentUser,
+  getList,
+  getLists,
+  getOffers,
+  getOrder,
+  getOrderDeliverables,
+  hasSavedSession,
+  listCreators,
+  markAllNotificationsRead,
+  markNotificationRead,
+  getNotifications,
+  getOrders,
+  getUnreadNotificationCount,
+  logout as logoutRequest,
+  logoutAll as logoutAllRequest,
+  removeCreatorFromList,
+  removeCartItem,
+  requestOrderRevision,
+  respondToOffer,
+  reviewOrder as reviewOrderRequest,
+  saveBrandProfile,
+  saveCreatorProfile as saveCreatorProfileRequest,
+  selectCampaignBid,
+  submitOrderDeliverable,
+  submitCampaignBid,
+  updateCreatorPackage,
+  updateList,
+  updateCampaign,
+  updateCampaignBid,
+  withdrawCampaignBid,
+  withdrawOffer,
+  type AuthRole,
+  type BrandOnboarding,
+} from '../api';
+import { Ctx } from './AppContext';
+import { navRef } from './navigation';
+import { Sheet, ChatMessage, Conversation } from './types';
+import {
+  mapCampaign,
+  mapBid,
+  mapOrder,
+  mapDeliverable,
+  mapPackage,
+  mapOffer,
+  listCreatorIds,
+  mapBrandProfile,
+  mapCreatorProfile,
+  mapPublicCreator,
+  moneyInRupees,
+} from './mappers';
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [brandName, setBrandName] = useState('');
+  const [accountRole, setAccountRole] = useState<'brand' | 'creator'>('brand');
+  const [brandProfile, setBrandProfile] = useState<BrandOnboarding | null>(null);
+  const [creatorProfile, setCreatorProfile] = useState<CreatorAccountProfile | null>(null);
+  const [creatorProfilesByEmail, setCreatorProfilesByEmail] = useState<Record<string, CreatorAccountProfile>>({});
+  const [creatorBids, setCreatorBids] = useState<any[]>([]);
+  const [creatorPackages, setCreatorPackages] = useState<any[]>([]);
+  const [offers, setOffers] = useState<any[]>([]);
+  const [cart, setCart] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [jobs, setJobs] = useState<Job[]>(JOBS);
+  const [creatorSearchResults, setCreatorSearchResults] = useState<Creator[]>([]);
+  const [lists, setLists] = useState(LISTS);
+  const [saved, setSaved] = useState<string[]>([]);
+  const [deliverables, setDeliverables] = useState<any[]>([]);
+  const [orders, setOrders] = useState(ORDERS);
+  const [unread, setUnread] = useState(4);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [sessionUser, setSessionUser] = useState<any>(null);
+  const [sheet, setSheet] = useState<Sheet>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [pendingCreator, setPendingCreator] = useState<string | null>(null);
+  const timer = useRef<any>(null);
+  const creatorSearchRequest = useRef(0);
+  const campaignRefreshInFlight = useRef<Promise<Job[]> | null>(null);
+  const creatorSearchInFlight = useRef(new Map<string, Promise<Creator[]>>());
+
+  const showToast = useCallback((m: string) => {
+    setToast(m);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setToast(null), 2600);
+  }, []);
+  const openSheet = (type: string, params?: any) => {
+    setSheet({ type, params });
+  };
+  const closeSheet = () => setSheet(null);
+
+  const reset = (routes: any[]) =>
+    navRef.isReady() && navRef.dispatch(CommonActions.reset({ index: routes.length - 1, routes }));
+
+  const login = (role: AuthRole, user?: any, profile?: BrandOnboarding | CreatorAccountProfile) => {
+    setLoggedIn(true);
+    setAccountRole(role);
+    setSessionUser(user || null);
+    setJobs([]);
+    setOrders([]);
+    setLists([]);
+    setCreatorPackages([]);
+    setOffers([]);
+    setCart([]);
+    setNotifications([]);
+    setUnread(0);
+    setCreatorBids([]);
+    setDeliverables([]);
+    setCreatorSearchResults([]);
+    setConversations([]);
+    setSaved([]);
+    if (role === 'brand' && profile) {
+      setCreatorProfile(null);
+      const brand = profile as BrandOnboarding;
+      setBrandProfile(brand);
+      setBrandName(brand.brandName);
+    } else if (role === 'creator' && profile) {
+      setBrandProfile(null);
+      setBrandName('');
+      setCreatorProfile(profile as CreatorAccountProfile);
+    }
+    if (pendingCreator && role === 'brand') {
+      const id = pendingCreator;
+      setPendingCreator(null);
+      reset([{ name: 'Main' }, { name: 'CreatorProfile', params: { id } }]);
+    } else reset([{ name: role === 'creator' ? 'CreatorMain' : 'Main' }]);
+  };
+  const saveCreatorProfile = (profile: CreatorAccountProfile | null) => {
+    setCreatorProfile(profile);
+    if (profile?.email) {
+      setCreatorProfilesByEmail((previous) => ({ ...previous, [profile.email.toLowerCase()]: profile }));
+    }
+  };
+  const findCreatorProfile = (email: string) => creatorProfilesByEmail[email.trim().toLowerCase()] || null;
+  const submitCreatorBid = async (bid: any) => {
+    const response = await submitCampaignBid(bid.jobId, {
+      price: bid.price,
+      message: bid.proposal,
+      expectedViews: bid.expectedViews,
+      deliveryDays: bid.deliveryDays,
+    });
+    const savedBid = {
+      ...mapBid(response.bid || response),
+      jobId: bid.jobId,
+      jobTitle: bid.jobTitle,
+      status: response.status || response.bid?.status || 'Submitted',
+    };
+    setCreatorBids((previous) => [savedBid, ...previous]);
+    await Promise.all([refreshCreatorBids(), refreshCampaigns()]);
+    return savedBid;
+  };
+  const refreshCampaigns = useCallback(() => {
+    if (!campaignRefreshInFlight.current) {
+      campaignRefreshInFlight.current = (async () => {
+        const items: any[] = [];
+        const seenCursors = new Set<string>();
+        let cursor: string | undefined;
+        do {
+          const page = await getCampaigns(cursor);
+          items.push(...page.items);
+          cursor = page.nextCursor;
+          if (cursor && seenCursors.has(cursor)) throw new Error('Campaign pagination repeated a cursor.');
+          if (cursor) seenCursors.add(cursor);
+        } while (cursor);
+        const campaigns = items.map(mapCampaign);
+        setJobs(campaigns);
+        return campaigns;
+      })().finally(() => {
+        campaignRefreshInFlight.current = null;
+      });
+    }
+    return campaignRefreshInFlight.current;
+  }, []);
+  const loadCampaignDetail = async (id: string) => {
+    const response = await getCampaign(id);
+    const campaign = mapCampaign(response.campaign || response);
+    setJobs((previous) => previous.map((item) => item.id === campaign.id ? { ...item, ...campaign } : item));
+    return campaign;
+  };
+  const refreshCreatorBids = async (creatorId = creatorProfile?.creatorId || '') => {
+    const items: any[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    do {
+      const page = await getCreatorCampaigns(cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+      if (cursor && seenCursors.has(cursor)) throw new Error('Your bid history repeated a pagination cursor.');
+      if (cursor) seenCursors.add(cursor);
+    } while (cursor);
+    const bids = items.map((item) => {
+      const campaign = item.campaign || item.job || item;
+      const bidSource = item.bid || item.myBid || item.my_bid || item.proposal || item.application ||
+        campaign.myBid || campaign.my_bid || campaign.bid || item;
+      return {
+        ...mapBid(bidSource),
+        creatorId: String(creatorId || bidSource.creatorId || bidSource.creator_id || bidSource.creator?.id || ''),
+        jobId: String(
+          bidSource.campaignId || bidSource.campaign_id || bidSource.jobId || bidSource.job_id ||
+          campaign.id || item.campaignId || item.campaign_id || '',
+        ),
+        jobTitle: campaign.title || bidSource.campaignTitle || bidSource.campaign_title || bidSource.jobTitle || 'Campaign',
+        status: bidSource.status || 'Submitted',
+      };
+    });
+    setCreatorBids(bids);
+    return bids;
+  };
+  const refreshCreatorPackages = async () => {
+    const items: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await getCreatorPackages(cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    const packages = items.map(mapPackage);
+    setCreatorPackages(packages);
+    return packages;
+  };
+  const refreshOffers = async (role = accountRole) => {
+    const items: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = role === 'creator' ? await getCreatorOffers(cursor) : await getOffers(cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    const nextOffers = items.map(mapOffer);
+    setOffers(nextOffers);
+    return nextOffers;
+  };
+  const refreshCart = async () => {
+    const items: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await getCart(cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    const mapped = items.map((item) => ({
+      ...item,
+      id: String(item.id),
+      packageId: String(item.packageId ?? item.package_id ?? item.package?.id ?? ''),
+      title: item.package?.title || item.title || 'Creator package',
+      creatorName: item.creator?.displayName || item.creator?.display_name || item.creator?.name || 'Creator',
+      brief: item.brief || '',
+      price: moneyInRupees(item.package?.price ?? item.price),
+    }));
+    setCart(mapped);
+    return mapped;
+  };
+  const searchCreators = useCallback((filters: { q?: string; category?: string; location?: string; platform?: string; minPrice?: number; maxPrice?: number } = {}) => {
+    const key = JSON.stringify(filters);
+    const existing = creatorSearchInFlight.current.get(key);
+    if (existing) return existing;
+    const requestId = ++creatorSearchRequest.current;
+    const task = (async () => {
+      const items: any[] = [];
+      const seenCursors = new Set<string>();
+      let cursor: string | undefined;
+      do {
+        const page = await listCreators({ ...filters, cursor });
+        items.push(...page.items);
+        cursor = page.nextCursor;
+        if (cursor && seenCursors.has(cursor)) throw new Error('Creator pagination repeated a cursor.');
+        if (cursor) seenCursors.add(cursor);
+      } while (cursor);
+      const creators = items.map(mapPublicCreator);
+      if (requestId === creatorSearchRequest.current) setCreatorSearchResults(creators);
+      return creators;
+    })().finally(() => {
+      creatorSearchInFlight.current.delete(key);
+    });
+    creatorSearchInFlight.current.set(key, task);
+    return task;
+  }, []);
+  const loadPublicCreator = async (id: string) => mapPublicCreator(await getCreator(id));
+  const loadCampaignBids = async (campaignId: string) => {
+    const items: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await getCampaignBids(campaignId, cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    const bids = items.map(mapBid);
+    setJobs((previous) => previous.map((job) => job.id === campaignId
+      ? { ...job, bids, bidsCount: bids.length }
+      : job));
+    return bids;
+  };
+  const loadOrderDetails = async (id: string) => {
+    const response = await getOrder(id);
+    const order = mapOrder(response.order || response);
+    const items: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await getOrderDeliverables(id, cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    const nextDeliverables = items.map((item) => mapDeliverable(item, order));
+    setDeliverables((previous) => [
+      ...nextDeliverables,
+      ...previous.filter((item: any) => !nextDeliverables.some((next) => next.id === item.id)),
+    ]);
+    setOrders((previous) => previous.map((item) => item.id === order.id ? order : item));
+    return { order, deliverables: nextDeliverables };
+  };
+  const loadCreatorReviews = async (creatorId: string) => {
+    const items: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await getCreatorReviews(creatorId, cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    return items;
+  };
+  const readNotification = async (id: string) => {
+    await markNotificationRead(id);
+    setNotifications((previous) => previous.map((item) => String(item.id) === id ? { ...item, read: true, isRead: true } : item));
+    setUnread((previous) => Math.max(0, previous - 1));
+  };
+  const readAllNotifications = async () => {
+    await markAllNotificationsRead();
+    setNotifications((previous) => previous.map((item) => ({ ...item, read: true, isRead: true })));
+    setUnread(0);
+  };
+  const refreshOrders = async (role = accountRole) => {
+    const items: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = role === 'creator' ? await getCreatorOrders(cursor) : await getOrders(cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    const nextOrders = items.map(mapOrder);
+    setOrders(nextOrders);
+    return nextOrders;
+  };
+  const refreshLists = async () => {
+    const items: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await getLists(cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    const nextLists = items.map((item) => ({
+      ...item,
+      id: String(item.id),
+      count: item.count ?? item.creators?.length ?? item.creatorCount ?? item.creator_count ?? 0,
+    }));
+    setLists(nextLists);
+    const details = await Promise.all(nextLists.map(async (list) => {
+      if (list.creators || list.creatorIds || list.creator_ids) return list;
+      const response = await getList(list.id);
+      return response.list || response;
+    }));
+    setSaved(Array.from(new Set(details.flatMap(listCreatorIds))));
+    return nextLists;
+  };
+  const loadList = async (id: string) => {
+    const response = await getList(id);
+    return response.list || response;
+  };
+  const renameList = async (id: string, name: string) => {
+    const response = await updateList(id, name);
+    const updated = response.list || response;
+    setLists((previous) => previous.map((item) => item.id === id ? { ...item, ...updated, name: updated.name || name } : item));
+    return updated;
+  };
+  const removeList = async (id: string) => {
+    await deleteList(id);
+    setLists((previous) => previous.filter((item) => item.id !== id));
+    await refreshLists();
+  };
+  const saveCreator = async (creatorId: string, listId?: string) => {
+    if (!listId) {
+      openSheet('savetolist', { creatorId });
+      return;
+    }
+    await addCreatorToList(listId, creatorId);
+    setSaved((previous) => previous.includes(creatorId) ? previous : [...previous, creatorId]);
+    await refreshLists();
+    showToast('Creator saved to shortlist.');
+  };
+  const unsaveCreator = async (creatorId: string, listId?: string) => {
+    const details = await Promise.all(lists.map(async (list) => {
+      const response = await getList(list.id);
+      return { id: list.id, creatorIds: listCreatorIds(response.list || response) };
+    }));
+    const containingLists = details.filter((list) => list.creatorIds.includes(creatorId) && (!listId || list.id === listId));
+    await Promise.all(containingLists.map((list) => removeCreatorFromList(list.id, creatorId)));
+    await refreshLists();
+    const remainsSaved = details.some((list) => !containingLists.some((removed) => removed.id === list.id) && list.creatorIds.includes(creatorId));
+    if (!remainsSaved) setSaved((previous) => previous.filter((id) => id !== creatorId));
+  };
+  const createPackage = async (input: { title: string; platform: string; deliverables: string; price: number; deliveryDays: number }) => {
+    const response = await createCreatorPackage(input);
+    const savedPackage = mapPackage(response.package || response);
+    setCreatorPackages((previous) => [savedPackage, ...previous.filter((item) => item.id !== savedPackage.id)]);
+    return savedPackage;
+  };
+  const updatePackage = async (id: string, input: Partial<{ title: string; platform: string; deliverables: string; price: number; deliveryDays: number }>) => {
+    const response = await updateCreatorPackage(id, input);
+    const updated = mapPackage(response.package || response);
+    setCreatorPackages((previous) => previous.map((item) => item.id === id ? { ...item, ...updated } : item));
+    return updated;
+  };
+  const removePackage = async (id: string) => {
+    await deleteCreatorPackage(id);
+    setCreatorPackages((previous) => previous.filter((item) => item.id !== id));
+  };
+  const sendOffer = async (input: { creatorId: string; deliverable: string; budget: number; deadline: string; message: string; usageRights: string }) => {
+    const response = await createOffer(input);
+    const offer = mapOffer(response.offer || response);
+    setOffers((previous) => [offer, ...previous.filter((item) => item.id !== offer.id)]);
+    return offer;
+  };
+  const respondOffer = async (id: string, status: 'accepted' | 'rejected') => {
+    const response = await respondToOffer(id, status);
+    const updated = mapOffer(response.offer || response);
+    setOffers((previous) => previous.map((item) => item.id === id ? { ...item, ...updated, status } : item));
+    return updated;
+  };
+  const withdrawCreatorOffer = async (id: string) => {
+    await withdrawOffer(id);
+    setOffers((previous) => previous.map((item) => item.id === id ? { ...item, status: 'withdrawn' } : item));
+  };
+  const addPackageToCart = async (packageId: string, brief: string) => {
+    const response = await addCartItem(packageId, brief);
+    await refreshCart();
+    return response;
+  };
+  const removeCartEntry = async (id: string) => {
+    await removeCartItem(id);
+    setCart((previous) => previous.filter((item) => String(item.id) !== id));
+  };
+  const checkout = async (usageRights: string) => {
+    const response = await checkoutCart(usageRights);
+    await Promise.all([refreshCart(), refreshOrders('brand')]);
+    return response;
+  };
+  const submitDeliverable = async (id: string, contentUrl: string, note: string) => {
+    const response = await submitOrderDeliverable(id, contentUrl, note);
+    await Promise.all([loadOrderDetails(id), refreshOrders()]);
+    return response;
+  };
+  const cancelOrder = async (id: string, reason: string) => {
+    const response = await cancelOrderRequest(id, reason);
+    await refreshOrders();
+    return response;
+  };
+  const disputeOrder = async (id: string, reason: string) => {
+    const response = await disputeOrderRequest(id, reason);
+    await refreshOrders();
+    return response;
+  };
+  const reviewOrder = async (id: string, stars: number, text: string) => {
+    const response = await reviewOrderRequest(id, stars, text);
+    await refreshOrders();
+    return response;
+  };
+  const refreshNotifications = async () => {
+    const [items, count] = await Promise.all([
+      (async () => {
+        const all: any[] = [];
+        let cursor: string | undefined;
+        do {
+          const page = await getNotifications(cursor);
+          all.push(...page.items);
+          cursor = page.nextCursor;
+        } while (cursor);
+        return all;
+      })(),
+      getUnreadNotificationCount(),
+    ]);
+    setNotifications(items);
+    setUnread(count?.count ?? count?.unreadCount ?? 0);
+    return items;
+  };
+  const initializeWorkspace = async (role: AuthRole = accountRole, creatorId?: string) => {
+    const tasks = role === 'creator'
+      ? [refreshCampaigns(), refreshCreatorBids(creatorId), refreshOrders(role), refreshCreatorPackages(), refreshOffers(role), refreshNotifications()]
+      : [refreshCampaigns(), refreshOrders(role), refreshLists(), refreshNotifications(), searchCreators(), refreshOffers(role), refreshCart()];
+    const results = await Promise.allSettled(tasks);
+    const failed = results.find((result) => result.status === 'rejected');
+    if (failed?.status === 'rejected') {
+      showToast(failed.reason instanceof Error ? failed.reason.message : 'Some workspace data could not be loaded.');
+    }
+  };
+  const loadBrandProfile = async () => mapBrandProfile(await getBrandProfile());
+  const loadCreatorProfile = async () => mapCreatorProfile(await getCreatorProfile());
+  const saveBrandOnboarding = async (profile: BrandOnboarding) => {
+    const response = await saveBrandProfile({
+      name: profile.brandName,
+      ...(profile.brandWebsite ? { website: profile.brandWebsite } : {}),
+      ...(profile.businessCategory ? { industry: profile.businessCategory } : {}),
+      ...(profile.legalName ? { legalName: profile.legalName } : {}),
+      ...(profile.gstin ? { gstin: profile.gstin } : {}),
+      ...(profile.stateCode ? { stateCode: profile.stateCode } : {}),
+      ...(profile.billingAddress ? { billingAddress: profile.billingAddress } : {}),
+    });
+    const saved = mapBrandProfile(response.brand || response.profile || response);
+    setBrandProfile(saved);
+    setBrandName(saved.brandName);
+    return saved;
+  };
+  const saveCreatorOnboarding = async (profile: CreatorAccountProfile) => {
+    const response = await saveCreatorProfileRequest({
+      displayName: profile.name,
+      bio: profile.bio,
+      categories: profile.categories || [],
+      location: profile.city,
+      primaryPlatform: profile.primaryPlatform || profile.platforms[0]?.name,
+      repliesWithin: profile.repliesWithin,
+    });
+    const saved = {
+      ...profile,
+      ...mapCreatorProfile(response.creator || response.profile || response),
+      photoUrl: profile.photoUrl,
+      dateOfBirth: profile.dateOfBirth,
+      gender: profile.gender,
+      languages: profile.languages,
+      platforms: profile.platforms,
+    };
+    setCreatorProfile(saved);
+    return saved;
+  };
+  const restoreSession = async () => {
+    try {
+      if (!(await hasSavedSession())) return;
+      const user = await getCurrentUser();
+      const role: AuthRole = user.role === 'creator' ? 'creator' : 'brand';
+      if (role === 'creator') {
+        const profile = await loadCreatorProfile();
+        login(role, user, profile);
+        await initializeWorkspace(role, role === 'creator' ? (profile as CreatorAccountProfile).creatorId : undefined);
+      } else {
+        const profile = await loadBrandProfile();
+        login(role, user, profile);
+        await initializeWorkspace(role);
+      }
+    } catch (error) {
+      if ((error as any)?.status !== 401) showToast(error instanceof Error ? error.message : 'Unable to restore your session.');
+    }
+  };
+  const startConversation = (input: Omit<Conversation, 'id' | 'messages'>) => {
+    if (accountRole !== 'brand') {
+      showToast('Creators can reply after a brand starts the conversation.');
+      return null;
+    }
+    const id = `conversation-${input.creatorId}-${input.jobId || 'direct'}`;
+    setConversations((previous) => previous.some((conversation) => conversation.id === id)
+      ? previous
+      : [{ ...input, brandName: input.brandName || brandName, id, messages: [] }, ...previous]);
+    return id;
+  };
+  const sendMessage = (conversationId: string, text: string) => {
+    const conversation = conversations.find((item) => item.id === conversationId);
+    if (!conversation || !text.trim()) return false;
+    if (
+      accountRole === 'creator' &&
+      !conversation.messages.some((message) => message.sender === 'brand')
+    ) {
+      showToast('You can reply after the brand sends the first message.');
+      return false;
+    }
+    const message: ChatMessage = {
+      id: `message-${Date.now()}`,
+      sender: accountRole,
+      text: text.trim(),
+      sentAt: new Date().toISOString(),
+    };
+    setConversations((previous) => previous.map((item) => item.id === conversationId
+      ? { ...item, messages: [...item.messages, message] }
+      : item));
+    return true;
+  };
+  const logout = () => {
+    void logoutRequest().catch((error) => showToast(error instanceof Error ? error.message : 'Unable to log out.'));
+    setLoggedIn(false);
+    setAccountRole('brand');
+    setSessionUser(null);
+    setBrandProfile(null);
+    setCreatorProfile(null);
+    setBrandName('');
+    setConversations([]);
+    setSaved([]);
+    setCreatorSearchResults([]);
+    setJobs([]);
+    setOrders([]);
+    setLists([]);
+    setDeliverables([]);
+    setNotifications([]);
+    setUnread(0);
+    setCreatorPackages([]);
+    setOffers([]);
+    setCart([]);
+    reset([{ name: 'Landing' }]);
+  };
+  const logoutAll = async () => {
+    try {
+      await logoutAllRequest();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to log out all sessions.');
+      throw error;
+    } finally {
+      setLoggedIn(false);
+      setAccountRole('brand');
+      setSessionUser(null);
+      setBrandProfile(null);
+      setCreatorProfile(null);
+      setBrandName('');
+      setConversations([]);
+      setSaved([]);
+      setCreatorSearchResults([]);
+      setJobs([]);
+      setOrders([]);
+      setLists([]);
+      setDeliverables([]);
+      setNotifications([]);
+      setUnread(0);
+      setCreatorPackages([]);
+      setOffers([]);
+      setCart([]);
+      reset([{ name: 'Landing' }]);
+    }
+  };
+
+  const openCreator = (id: string) => {
+    if (!loggedIn) {
+      setPendingCreator(id);
+      navRef.navigate('RoleSelection', { mode: 'login' });
+    } else navRef.navigate('CreatorProfile', { id });
+  };
+
+  const addJob = async (input: Partial<Job>) => {
+    const response = await createCampaign({
+      title: input.title || '',
+      brief: input.description || input.deliverables || '',
+      platform: input.platform || '',
+      deliverables: input.deliverables || '',
+      budgetMin: input.min || 0,
+      budgetMax: input.max || 0,
+      closesAt: input.closes || undefined,
+      usageRights: input.usageRights && typeof input.usageRights === 'object' ? input.usageRights : undefined,
+    });
+    const job = mapCampaign(response.campaign || response);
+    setJobs((previous) => [job, ...previous.filter((item) => item.id !== job.id)]);
+    return job;
+  };
+  const updateJob = async (id: string, patch: Partial<Job>) => {
+    const response = await updateCampaign(id, {
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.description !== undefined ? { brief: patch.description } : {}),
+      ...(patch.platform !== undefined ? { platform: patch.platform } : {}),
+      ...(patch.deliverables !== undefined ? { deliverables: patch.deliverables } : {}),
+      ...(patch.min !== undefined ? { budgetMin: patch.min } : {}),
+      ...(patch.max !== undefined ? { budgetMax: patch.max } : {}),
+      ...(patch.closes !== undefined ? { closesAt: patch.closes } : {}),
+      ...(patch.usageRights && typeof patch.usageRights === 'object' ? { usageRights: patch.usageRights } : {}),
+    });
+    const updated = mapCampaign(response.campaign || response);
+    setJobs((previous) => previous.map((job) => job.id === id ? { ...job, ...updated } : job));
+    return updated;
+  };
+  const closeJob = async (id: string) => {
+    await closeCampaign(id);
+    setJobs((previous) => previous.map((job) => job.id === id ? { ...job, status: 'completed' } : job));
+  };
+  const withdrawBid = async (jobId: string, bidId: string) => {
+    await withdrawCampaignBid(jobId, bidId);
+    setCreatorBids((previous) => previous.map((bid) => bid.id === bidId ? { ...bid, status: 'withdrawn' } : bid));
+    await refreshCreatorBids();
+  };
+  const updateBid = async (jobId: string, bidId: string, input: { price?: number; message?: string; expectedViews?: number; deliveryDays?: number }) => {
+    const response = await updateCampaignBid(jobId, bidId, input);
+    await refreshCreatorBids();
+    return response;
+  };
+  const hireBid = async (jobId: string, bid: Bid) => {
+    const response = await selectCampaignBid(jobId, bid.id);
+    setJobs((previous) => previous.map((job) => (job.id === jobId ? { ...job, status: 'progress', hired: bid.creatorId, closes: '', bids: [] } : job)));
+    if (response?.order) setOrders((previous) => [mapOrder(response.order), ...previous.filter((order) => order.id !== String(response.order.id))]);
+    let orderRefreshError: unknown;
+    try {
+      await refreshOrders('brand');
+    } catch (error) {
+      orderRefreshError = error;
+    }
+    const name = bid.creatorName || CREATORS.find((c) => c.id === bid.creatorId)?.name || 'creator';
+    showToast(orderRefreshError
+      ? `Proposal accepted from ${name}, but orders could not refresh: ${orderRefreshError instanceof Error ? orderRefreshError.message : 'please reopen Orders.'}`
+      : `Proposal accepted from ${name}.`);
+    return response;
+  };
+  const addList = async (name: string) => {
+    const response = await createList(name);
+    const rawList = response.list || response;
+    const list = { ...rawList, id: String(rawList.id), count: rawList.count ?? 0 };
+    setLists((previous) => [list, ...previous.filter((item) => item.id !== list.id)]);
+    return list;
+  };
+  const approveOrder = async (id: string) => {
+    await approveOrderRequest(id);
+    await refreshOrders();
+    showToast('Order approved.');
+  };
+  const requestRevision = async (id: string, feedback: string) => {
+    await requestOrderRevision(id, feedback);
+    await refreshOrders();
+    showToast('Revision request sent.');
+  };
+
+  return (
+    <Ctx.Provider value={{
+      loggedIn, login, logout, accountRole, brandName, setBrandName, brandProfile, setBrandProfile,
+      creatorProfile, setCreatorProfile: saveCreatorProfile, findCreatorProfile, creatorBids, submitCreatorBid,
+      conversations, startConversation, sendMessage,
+      jobs, addJob, updateJob, closeJob, refreshCampaigns, loadCampaignDetail, loadCampaignBids, hireBid, withdrawBid, updateBid,
+      creatorSearchResults, searchCreators, loadPublicCreator,
+      refreshCreatorBids, creatorPackages, refreshCreatorPackages, createPackage, updatePackage, removePackage,
+      offers, refreshOffers, sendOffer, respondOffer, withdrawCreatorOffer,
+      cart, refreshCart, addPackageToCart, removeCartEntry, checkout,
+      lists, addList, refreshLists, saved, saveCreator, unsaveCreator,
+      loadList, renameList, removeList,
+      deliverables, orders, refreshOrders, loadOrderDetails, submitDeliverable, approveOrder, requestRevision,
+      cancelOrder, disputeOrder, reviewOrder, notifications, refreshNotifications, readNotification, readAllNotifications,
+      loadCreatorReviews,
+      unread, sessionUser, loadBrandProfile, loadCreatorProfile, saveBrandOnboarding, saveCreatorOnboarding, restoreSession, initializeWorkspace,
+      logoutAll,
+      sheet, openSheet, closeSheet, toast, showToast, openCreator, setPendingCreator, reset,
+    }}>
+      {children}
+    </Ctx.Provider>
+  );
+}

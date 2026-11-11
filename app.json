@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Linkloom",
+    "slug": "linkloom",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#FFFFFF",
+    "android": {
+      "package": "com.brandside.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF16A"
+      }
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Linkloom to access your photos so you can choose a creator profile picture."
+        }
+      ],
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}
