@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { C } from '../../theme';
 import { useApp } from '../../store';
 import { Btn, Card, Row, T } from '../../components/ui';
+import { EmailVerification } from '../../components/ui/EmailVerification';
 
 import { Screen } from './shared';
 
@@ -137,6 +138,7 @@ export function AccountSettings({ navigation }: any) {
           ))}
         </Card>
       </View>
+      <EmailVerification />
 
       <View style={{ gap: 4 }}>
         <T size={11} w="bold" color={C.muted2} track={0.8} style={{ paddingHorizontal: 2 }}>BILLING</T>

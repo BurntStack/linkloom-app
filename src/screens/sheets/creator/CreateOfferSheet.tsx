@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../../store';
-import { Btn, Field, Row, Sheet } from '../../../components/ui';
+import { Btn, Field, Row, Select, Sheet } from '../../../components/ui';
 
 export function CreateOffer({ creator }: { creator: any }) {
   const { closeSheet, sendOffer, showToast } = useApp();
@@ -8,24 +8,32 @@ export function CreateOffer({ creator }: { creator: any }) {
   const [budget, setBudget] = useState('');
   const [deadline, setDeadline] = useState('');
   const [message, setMessage] = useState('');
-  const [usageRights, setUsageRights] = useState('');
+  const [duration, setDuration] = useState('');
+  const [channelsText, setChannelsText] = useState('');
+  const [exclusivity, setExclusivity] = useState('');
+  const [territory, setTerritory] = useState('');
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
     const amount = Number(budget);
-    const deadlineDate = new Date(deadline);
-    if (!deliverable.trim() || !message.trim() || !usageRights.trim()) return showToast('Complete the deliverable, message, and usage rights.');
+    if (!deliverable.trim() || !message.trim() || !duration || !channelsText.trim() || !exclusivity || !territory.trim()) {
+      return showToast('Complete the deliverable, message, and usage rights.');
+    }
     if (!Number.isFinite(amount) || amount <= 0) return showToast('Enter a valid offer budget.');
-    if (!deadline || Number.isNaN(deadlineDate.getTime())) return showToast('Enter a valid offer deadline.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(deadline)) return showToast('Enter the deadline as YYYY-MM-DD.');
+    const channels = channelsText.split(',').map((channel) => channel.trim()).filter(Boolean);
+    if (channels.some((channel) => !['organic_social', 'paid_ads'].includes(channel))) {
+      return showToast('Use supported channels: organic_social, paid_ads.');
+    }
     setSaving(true);
     try {
       await sendOffer({
         creatorId: String(creator.id),
         deliverable: deliverable.trim(),
         budget: amount,
-        deadline: deadlineDate.toISOString(),
+        deadline,
         message: message.trim(),
-        usageRights: usageRights.trim(),
+        usageRights: { duration, channels, exclusivity: exclusivity === 'Yes', territory: territory.trim() },
       });
       showToast('Offer sent.');
       closeSheet();
@@ -53,7 +61,10 @@ export function CreateOffer({ creator }: { creator: any }) {
       <Field label="Budget (₹)" value={budget} onChangeText={(value) => setBudget(value.replace(/\D/g, ''))} keyboardType="number-pad" placeholder="e.g. 5000" />
       <Field label="Deadline" value={deadline} onChangeText={setDeadline} placeholder="YYYY-MM-DD" />
       <Field label="Message" value={message} onChangeText={setMessage} multiline placeholder="Describe the collaboration request" />
-      <Field label="Usage rights" value={usageRights} onChangeText={setUsageRights} placeholder="e.g. Organic and paid usage for 30 days" />
+      <Select label="Usage duration" value={duration || 'Choose'} options={['perpetual', '12m', '6m', '3m']} onChange={setDuration} />
+      <Field label="Channels (comma separated)" value={channelsText} onChangeText={setChannelsText} placeholder="organic_social, paid_ads" />
+      <Select label="Exclusive usage?" value={exclusivity || 'Choose'} options={['No', 'Yes']} onChange={setExclusivity} />
+      <Field label="Territory" value={territory} onChangeText={setTerritory} placeholder="e.g. India" />
     </Sheet>
   );
 }

@@ -9,6 +9,7 @@ import {
   ApiError,
   clearAuthTokens,
   completeSignup,
+  loginWithPassword,
   requestAuthOtp,
   verifyOtp as verifyOtpRequest,
   type AuthChannel,
@@ -19,8 +20,10 @@ export function Auth({ navigation, route }: any) {
   const { login, showToast, loadBrandProfile, loadCreatorProfile, initializeWorkspace } = useApp();
   const [mode, setMode] = useState<'login' | 'signup'>(route.params?.mode || 'login');
   const [role, setRole] = useState<'brand' | 'creator'>(route.params?.role === 'creator' ? 'creator' : 'brand');
-  const [channel, setChannel] = useState<AuthChannel>('sms');
   const [identifier, setIdentifier] = useState('');
+  const channel: AuthChannel = identifier.includes('@') ? 'email' : 'sms';
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -29,6 +32,66 @@ export function Auth({ navigation, route }: any) {
   const [challengeId, setChallengeId] = useState('');
   const [verifiedUser, setVerifiedUser] = useState<any>(null);
   const roleAccent = role === 'creator' ? C.creatorAccent : C.brandAccent;
+
+  const continueWithUser = async (user: any) => {
+    const actualRole = user.role === 'creator' ? 'creator' : user.role === 'brand' ? 'brand' : role;
+    if (actualRole !== role) {
+      await clearAuthTokens();
+      throw new Error(`This account belongs to a ${actualRole} workspace. Select the matching workspace.`);
+    }
+    if (user.needsOnboarding) {
+      navigation.reset({
+        index: 0,
+        routes: [role === 'creator'
+          ? {
+              name: 'CreatorSetup',
+              params: {
+                initialName: user.fullName || user.full_name || '',
+                phone: user.phone || user.mobile || (channel === 'sms' ? identifier.trim() : ''),
+                user,
+              },
+            }
+          : { name: 'Onboarding', params: { user } }],
+      });
+      return;
+    }
+    try {
+      const profile = role === 'creator' ? await loadCreatorProfile() : await loadBrandProfile();
+      login(role, user, profile);
+      await initializeWorkspace(role, role === 'creator' ? (profile as any).creatorId : undefined);
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 404) throw error;
+      navigation.reset({
+        index: 0,
+        routes: [role === 'creator'
+          ? {
+              name: 'CreatorSetup',
+              params: {
+                initialName: user.fullName || user.full_name || '',
+                phone: user.phone || user.mobile || (channel === 'sms' ? identifier.trim() : ''),
+                user,
+              },
+            }
+          : { name: 'Onboarding', params: { user } }],
+      });
+    }
+  };
+
+  const signInWithPassword = async () => {
+    if (submitting) return;
+    const destination = identifier.trim();
+    if (!destination) return showToast('Enter your email address or mobile number.');
+    if (!password) return showToast('Enter your password.');
+    setSubmitting(true);
+    try {
+      const session = await loginWithPassword(destination, password);
+      await continueWithUser(session.user);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to sign in.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const requestCode = async () => {
     if (submitting) return;
@@ -66,31 +129,7 @@ export function Auth({ navigation, route }: any) {
         setStep('details');
         return;
       }
-      const actualRole = user.role === 'creator' ? 'creator' : user.role === 'brand' ? 'brand' : role;
-      if (actualRole !== role) {
-        await clearAuthTokens();
-        throw new Error(`This ${channel === 'email' ? 'email address' : 'mobile number'} belongs to a ${actualRole} account. Select the matching workspace.`);
-      }
-      try {
-        const profile = role === 'creator' ? await loadCreatorProfile() : await loadBrandProfile();
-        login(role, user, profile);
-        await initializeWorkspace(role, role === 'creator' ? (profile as any).creatorId : undefined);
-      } catch (error) {
-        if (!(error instanceof ApiError) || error.status !== 404) throw error;
-        navigation.reset({
-          index: 0,
-          routes: [role === 'creator'
-            ? {
-                name: 'CreatorSetup',
-                params: {
-                  initialName: user.fullName || user.full_name || '',
-                  phone: user.mobile || user.phone || (channel === 'sms' ? identifier.trim() : ''),
-                  user,
-                },
-              }
-            : { name: 'Onboarding', params: { user } }],
-        });
-      }
+      await continueWithUser(user);
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Unable to continue.');
     } finally {
@@ -103,12 +142,16 @@ export function Auth({ navigation, route }: any) {
     if (!verifiedUser) return showToast('Verify your account before continuing.');
     if (name.trim().length < 2) return showToast('Enter your full name.');
     if (role === 'brand' && !companyName.trim()) return showToast('Enter your brand or company name.');
+    if (password.length < 8) return showToast('Choose a password with at least 8 characters.');
+    if (password !== confirmPassword) return showToast('Your passwords do not match.');
     setSubmitting(true);
     try {
       await completeSignup({
         role,
         fullName: name.trim(),
         ...(role === 'brand' ? { brandName: companyName.trim() } : { displayName: name.trim() }),
+        password,
+        confirmPassword,
       });
       navigation.reset({
         index: 0,
@@ -117,7 +160,7 @@ export function Auth({ navigation, route }: any) {
               name: 'CreatorSetup',
               params: {
                 initialName: name.trim(),
-                phone: channel === 'sms' ? identifier.trim() : verifiedUser.mobile || verifiedUser.phone || '',
+                phone: channel === 'sms' ? identifier.trim() : verifiedUser.phone || verifiedUser.mobile || '',
                 user: verifiedUser,
               },
             }
@@ -236,6 +279,8 @@ export function Auth({ navigation, route }: any) {
           {role === 'brand' ? (
             <Field label="Brand name" value={companyName} onChangeText={setCompanyName} placeholder="e.g. Salt & Soil Foods" />
           ) : null}
+          <Field label="Password" value={password} onChangeText={setPassword} placeholder="At least 8 characters" secure />
+          <Field label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Enter your password again" secure />
           <Btn
             label={submitting ? 'Creating account…' : 'Continue'}
             onPress={completeSignupDetails}
@@ -267,44 +312,26 @@ export function Auth({ navigation, route }: any) {
             ))}
           </Row>
 
-          <Row style={{ borderBottomWidth: 1, borderBottomColor: C.border, gap: 18 }}>
-            {(['sms', 'email'] as const).map((method) => (
-              <Pressable
-                key={method}
-                onPress={() => {
-                  setChannel(method);
-                  setIdentifier('');
-                  setChallengeId('');
-                }}
-                style={{
-                  paddingHorizontal: 2,
-                  paddingVertical: 10,
-                  borderBottomWidth: 2,
-                  borderBottomColor: channel === method ? roleAccent : 'transparent',
-                }}
-              >
-                <T size={11} w="semi" color={channel === method ? C.text : C.muted}>
-                  {method === 'sms' ? 'Mobile' : 'Email'}
-                </T>
-              </Pressable>
-            ))}
-          </Row>
-
           <Field
-            label={channel === 'email' ? 'Email' : 'Mobile'}
+            label="Email or mobile number"
             value={identifier}
             onChangeText={setIdentifier}
-            placeholder={channel === 'email' ? 'you@example.com' : '+91 98765 43210'}
-            keyboardType={channel === 'email' ? 'email-address' : 'phone-pad'}
+            placeholder="you@example.com or +91 98765 43210"
+            keyboardType="default"
           />
+          {mode === 'login' ? (
+            <Field label="Password" value={password} onChangeText={setPassword} placeholder="Enter your password" secure />
+          ) : null}
           <Btn
-            label={submitting ? 'Sending code…' : mode === 'signup' ? 'Continue' : 'Send sign-in code'}
-            onPress={requestCode}
+            label={submitting ? 'Please wait…' : mode === 'signup' ? 'Send verification code' : 'Sign in'}
+            onPress={mode === 'signup' ? requestCode : signInWithPassword}
             loading={submitting}
             style={{ minHeight: 48 }}
           />
           <T size={10} color={C.muted} style={{ lineHeight: 15 }}>
-            We’ll send a one-time verification code to your {channel === 'email' ? 'email' : 'mobile number'}.
+            {mode === 'signup'
+              ? 'We’ll send a one-time verification code to your email or mobile number.'
+              : 'Sign in with the password associated with your email or mobile number.'}
           </T>
         </>
       )}

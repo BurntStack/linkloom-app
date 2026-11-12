@@ -284,15 +284,19 @@ export function OrderDetails({ orderId }: { orderId: string }) {
           label="Message Creator"
           variant="outline"
           icon="chatbubble-outline"
-          onPress={() => {
-            const conversationId = startConversation({
+          onPress={async () => {
+            try {
+              const conversationId = await startConversation({
               creatorId: o.creatorId,
               creatorName,
               creatorPhotoUrl,
               jobId: String(o.campaign?.id || o.campaignId || o.campaign_id || o.id),
               jobTitle: o.title,
-            });
-            if (conversationId) openSheet('messages', { conversationId });
+              });
+              if (conversationId) openSheet('messages', { conversationId });
+            } catch (error) {
+              showToast(error instanceof Error ? error.message : 'Unable to start conversation.');
+            }
           }}
         />
       ) : null}

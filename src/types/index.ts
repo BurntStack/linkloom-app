@@ -3,6 +3,7 @@ import { ImageSourcePropType } from 'react-native';
 export type CreatorPackage = {
   id: string;
   title: string;
+  description?: string;
   platform: string;
   deliverables: string;
   price: number;

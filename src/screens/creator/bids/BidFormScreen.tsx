@@ -16,7 +16,6 @@ function ReviewBidSheet({
   price,
   proposal,
   deliveryDays,
-  views,
   saving,
 }: {
   visible: boolean;
@@ -27,7 +26,6 @@ function ReviewBidSheet({
   price: number;
   proposal: string;
   deliveryDays: string;
-  views: string;
   saving: boolean;
 }) {
   return (
@@ -57,7 +55,6 @@ function ReviewBidSheet({
         <ReviewRow label="Platform fee" value="None · Creator plan" />
         <ReviewRow label="Tax" value="As per confirmed rules" />
         <ReviewRow label="Delivery time" value={`${deliveryDays} days`} />
-        {views ? <ReviewRow label="Expected views" value={Number(views).toLocaleString('en-IN')} /> : null}
       </View>
       <View style={{ borderLeftWidth: 3, borderLeftColor: C.creatorAccent, borderRadius: 12, padding: 13, backgroundColor: C.pinkBg }}>
         <T size={13} color={C.text} style={{ lineHeight: 20 }}>{proposal}</T>
@@ -93,7 +90,6 @@ export function CreatorBidForm({ navigation, route }: any) {
   const job = sourceJob ? toCreatorJob(sourceJob) : undefined;
   const [price, setPrice] = useState('');
   const [proposal, setProposal] = useState('');
-  const [views, setViews] = useState('');
   const [deliveryDays, setDeliveryDays] = useState('');
   const [saving, setSaving] = useState(false);
   const [reviewVisible, setReviewVisible] = useState(false);
@@ -119,10 +115,6 @@ export function CreatorBidForm({ navigation, route }: any) {
       showToast('Enter the expected delivery time in days');
       return false;
     }
-    if (views && (!Number.isInteger(Number(views)) || Number(views) < 0)) {
-      showToast('Enter a valid expected view count');
-      return false;
-    }
     return true;
   };
 
@@ -142,7 +134,6 @@ export function CreatorBidForm({ navigation, route }: any) {
         jobTitle: job.title,
         price: Number(price),
         proposal: proposal.trim(),
-        expectedViews: views ? Number(views) : undefined,
         deliveryDays: Number(deliveryDays),
       });
       setReviewVisible(false);
@@ -232,7 +223,6 @@ export function CreatorBidForm({ navigation, route }: any) {
             maxLength={1000}
           />
         </View>
-        <Field label="Expected views (optional)" value={views} onChangeText={(value) => setViews(value.replace(/\D/g, ''))} placeholder="Your estimate" keyboardType="number-pad" />
         <Field label="Expected delivery time (days)" value={deliveryDays} onChangeText={(value) => setDeliveryDays(value.replace(/\D/g, ''))} placeholder="e.g. 7" keyboardType="number-pad" />
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Ionicons name="calendar-outline" size={20} color={C.muted} />
@@ -259,7 +249,6 @@ export function CreatorBidForm({ navigation, route }: any) {
         price={Number(price) || 0}
         proposal={proposal}
         deliveryDays={deliveryDays}
-        views={views}
         saving={saving}
       />
     </View>

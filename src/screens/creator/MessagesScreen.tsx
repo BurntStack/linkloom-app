@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Card, Row, StackHeader, T } from '../../components/ui';
@@ -16,7 +16,7 @@ function messageTime(value?: string) {
 }
 
 export function CreatorMessages({ navigation }: any) {
-  const { creatorProfile, conversations, orders, sendMessage } = useApp();
+  const { creatorProfile, conversations, orders, sendMessage, loadConversationMessages, showToast } = useApp();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
@@ -24,6 +24,13 @@ export function CreatorMessages({ navigation }: any) {
   const creatorId = creatorProfile?.creatorId || `creator-${creatorProfile?.email || 'guest'}`;
   const creatorConversations = conversations.filter((item: any) => item.creatorId === creatorId);
   const selected = creatorConversations.find((item: any) => item.id === selectedId);
+  useEffect(() => {
+    if (selectedId) {
+      loadConversationMessages(selectedId).catch((error: unknown) =>
+        showToast(error instanceof Error ? error.message : 'Unable to load messages.'),
+      );
+    }
+  }, [selectedId]);
   const canReply = selected?.messages.some((message: any) => message.sender === 'brand');
   const relatedOrder = selected && orders.find((order: any) =>
     (selected.jobId && order.id === selected.jobId) ||
@@ -127,7 +134,13 @@ export function CreatorMessages({ navigation }: any) {
               accessibilityRole="button"
               accessibilityLabel="Send reply"
               disabled={!draft.trim()}
-              onPress={() => { if (sendMessage(selected.id, draft)) setDraft(''); }}
+              onPress={async () => {
+                try {
+                  if (await sendMessage(selected.id, draft)) setDraft('');
+                } catch (error) {
+                  showToast(error instanceof Error ? error.message : 'Unable to send message.');
+                }
+              }}
               style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: C.cta, alignItems: 'center', justifyContent: 'center', opacity: draft.trim() ? 1 : 0.55 }}
             >
               <Ionicons name="send" size={17} color={C.onCta} />

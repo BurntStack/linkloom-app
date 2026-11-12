@@ -47,7 +47,10 @@ async function readEnvelope<T>(response: Response): Promise<ApiEnvelope<T>> {
   let envelope: ApiEnvelope<T> = {};
   if (text) {
     try {
-      envelope = JSON.parse(text) as ApiEnvelope<T>;
+      const parsed = JSON.parse(text) as ApiEnvelope<T> & Record<string, unknown>;
+      envelope = 'success' in parsed || 'data' in parsed || 'error' in parsed || 'meta' in parsed
+        ? parsed
+        : { data: parsed as T };
     } catch {
       throw new ApiError('The server returned an invalid response.', response.status);
     }
@@ -142,7 +145,7 @@ export async function request<T>(path: string, options?: RequestInit, auth = tru
   return envelope.data as T;
 }
 
-export function queryString(params: Record<string, string | number | undefined>) {
+export function queryString(params: Record<string, string | number | boolean | undefined>) {
   const query = Object.entries(params).filter(([, value]) => value !== undefined && value !== '');
   return query.length ? `?${query.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join('&')}` : '';
 }
@@ -154,7 +157,7 @@ export function pageItems<T>(data: unknown): T[] {
     const items = [
       record.results, record.items, record.data, record.creators, record.campaigns, record.bids,
       record.orders, record.lists, record.offers, record.packages, record.cartItems,
-      record.notifications, record.deliverables, record.reviews,
+      record.notifications, record.deliverables, record.reviews, record.conversations, record.messages,
     ].find(Array.isArray);
     if (Array.isArray(items)) return items as T[];
     if (record.data && typeof record.data === 'object') return pageItems<T>(record.data);
@@ -170,4 +173,31 @@ export async function requestPage<T>(path: string): Promise<ApiPage<T>> {
     nextCursor: envelope.meta?.nextCursor,
     unreadCount: typeof envelope.meta?.unreadCount === 'number' ? envelope.meta.unreadCount : undefined,
   };
+}
+
+export async function requestDownload(path: string): Promise<string> {
+  let access = await SecureStore.getItemAsync(ACCESS_KEY);
+  if (!access) access = await refreshAccessToken() || undefined;
+  if (!access) throw new ApiError('Your session has expired. Please log in again.', 401, 'not_authenticated');
+
+  const send = async (token: string) => {
+    try {
+      return await fetch(`${API_BASE_URL}${path}`, {
+        headers: { Accept: 'text/csv, application/json', Authorization: `Bearer ${token}` },
+      });
+    } catch (error) {
+      throw new ApiError(error instanceof Error ? error.message : 'Unable to reach the server.', 0, 'network_error');
+    }
+  };
+
+  let response = await send(access);
+  if (response.status === 401) {
+    access = await refreshAccessToken() || undefined;
+    if (access) response = await send(access);
+  }
+  if (!response.ok) {
+    await readEnvelope<unknown>(response);
+    throw new ApiError(`Request failed (${response.status})`, response.status);
+  }
+  return response.text();
 }

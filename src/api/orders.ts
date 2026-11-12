@@ -1,11 +1,11 @@
 import { queryString, request, requestPage } from './client';
 
-export async function getOrders(cursor?: string) {
-  return requestPage<any>(`/v1/orders/${queryString({ limit: 50, cursor })}`);
+export async function getOrders(cursor?: string, status?: string) {
+  return requestPage<any>(`/v1/orders/${queryString({ limit: 50, cursor, status })}`);
 }
 
-export async function getCreatorOrders(cursor?: string) {
-  return requestPage<any>(`/v1/creators/me/orders/${queryString({ limit: 50, cursor })}`);
+export async function getCreatorOrders(cursor?: string, status?: string) {
+  return requestPage<any>(`/v1/creators/me/orders/${queryString({ limit: 50, cursor, status })}`);
 }
 
 export async function getOrder(id: string) {

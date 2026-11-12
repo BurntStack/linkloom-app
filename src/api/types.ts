@@ -1,5 +1,11 @@
 export type AuthRole = 'brand' | 'creator';
 export type AuthChannel = 'sms' | 'email';
+export type UsageRights = {
+  duration: string;
+  channels: string[];
+  exclusivity: boolean;
+  territory: string;
+};
 
 export type BrandOnboarding = {
   brandName: string;

@@ -10,6 +10,7 @@ export function CreatorPackages({ navigation }: any) {
   const { creatorPackages, refreshCreatorPackages, createPackage, updatePackage, removePackage, showToast } = useApp();
   const [selectedId, setSelectedId] = useState('');
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [platform, setPlatform] = useState('Instagram');
   const [deliverables, setDeliverables] = useState('');
   const [price, setPrice] = useState('');
@@ -23,6 +24,7 @@ export function CreatorPackages({ navigation }: any) {
   const clearForm = () => {
     setSelectedId('');
     setTitle('');
+    setDescription('');
     setPlatform('Instagram');
     setDeliverables('');
     setPrice('');
@@ -31,11 +33,11 @@ export function CreatorPackages({ navigation }: any) {
   const submit = async () => {
     const amount = Number(price);
     const days = Number(deliveryDays);
-    if (!title.trim() || !deliverables.trim()) return showToast('Enter a package title and deliverables.');
+    if (!title.trim() || !description.trim() || !deliverables.trim()) return showToast('Enter a package title, description, and deliverables.');
     if (!Number.isFinite(amount) || amount <= 0 || !Number.isInteger(days) || days < 1) return showToast('Enter a valid price and delivery time.');
     setSaving(true);
     try {
-      const input = { title: title.trim(), platform, deliverables: deliverables.trim(), price: amount, deliveryDays: days };
+      const input = { title: title.trim(), description: description.trim(), platform, deliverables: deliverables.trim(), price: amount, deliveryDays: days, active: true };
       if (selectedId) await updatePackage(selectedId, input);
       else await createPackage(input);
       showToast(selectedId ? 'Package updated.' : 'Package created.');
@@ -50,6 +52,7 @@ export function CreatorPackages({ navigation }: any) {
       <ScrollView contentContainerStyle={{ padding: 18, gap: 12, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
         <Heading title={selectedId ? 'Edit package' : 'Create a package'} sub="Set a clear service, price, and delivery time." />
         <Field label="Package title" value={title} onChangeText={setTitle} placeholder="e.g. Instagram Reel" />
+        <Field label="Description" value={description} onChangeText={setDescription} multiline placeholder="Describe the service included in this package" />
         <Select label="Platform" value={platform} options={['Instagram', 'YouTube', 'TikTok', 'Other']} onChange={setPlatform} />
         <Field label="Deliverables" value={deliverables} onChangeText={setDeliverables} multiline placeholder="What the brand will receive" />
         <Field label="Price (₹)" value={price} onChangeText={(value) => setPrice(value.replace(/\D/g, ''))} keyboardType="number-pad" placeholder="5000" />
@@ -66,6 +69,7 @@ export function CreatorPackages({ navigation }: any) {
               <Btn label="Edit" variant="outline" small flex onPress={() => {
                 setSelectedId(item.id);
                 setTitle(item.title);
+                setDescription(item.description || '');
                 setPlatform(item.platform);
                 setDeliverables(item.deliverables);
                 setPrice(String(item.price));

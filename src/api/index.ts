@@ -9,3 +9,7 @@ export * from './campaigns';
 export * from './offers';
 export * from './orders';
 export * from './notifications';
+export * from './payments';
+export * from './wallet';
+export * from './conversations';
+export * from './reports';

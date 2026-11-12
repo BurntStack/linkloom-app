@@ -1,11 +1,12 @@
 import { queryString, request, requestPage, rupeesToPaise } from './client';
+import type { UsageRights } from './types';
 
 export async function getOffers(cursor?: string) {
   return requestPage<any>(`/v1/offers/${queryString({ limit: 50, cursor })}`);
 }
 
 export async function createOffer(input: {
-  creatorId: string; deliverable: string; budget: number; deadline: string; message: string; usageRights: string;
+  creatorId: string; deliverable: string; budget: number; deadline: string; message: string; usageRights: UsageRights;
 }) {
   return request<any>('/v1/offers/', {
     method: 'POST',

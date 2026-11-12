@@ -1,13 +1,15 @@
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { Share, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { C, inr } from '../../theme';
 import { useApp } from '../../store';
 import { Card, Row, T } from '../../components/ui';
 import { Page } from './PageLayout';
+import { exportCampaignsReport, exportOrdersReport, getReportOverview } from '../../api';
 
 export function Reporting({ navigation }: any) {
   const { orders, refreshOrders, showToast } = useApp();
+  const [overview, setOverview] = React.useState<any>(null);
   const totalOrderValue = orders.reduce((total: number, order: any) => total + (order.held || 0), 0);
   const releasedValue = orders.filter((order: any) => order.stage === 'released').reduce((total: number, order: any) => total + (order.held || 0), 0);
   const escrowValue = orders.filter((order: any) => order.stage !== 'released').reduce((total: number, order: any) => total + (order.held || 0), 0);
@@ -17,10 +19,53 @@ export function Reporting({ navigation }: any) {
 
   useEffect(() => {
     refreshOrders('brand').catch((error: unknown) => showToast(error instanceof Error ? error.message : 'Unable to load order totals.'));
+    getReportOverview()
+      .then((report) => setOverview(report.overview || report.metrics || report))
+      .catch((error: unknown) => showToast(error instanceof Error ? error.message : 'Unable to load report metrics.'));
   }, []);
+  const exportReport = async (type: 'orders' | 'campaigns') => {
+    try {
+      const csv = type === 'orders' ? await exportOrdersReport() : await exportCampaignsReport();
+      await Share.share({ title: `${type}.csv`, message: csv });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : `Unable to export ${type}.`);
+    }
+  };
+  const metric = (key: string) => {
+    const value = overview?.[key];
+    if (value === undefined || value === null) return '—';
+    if (typeof value === 'object' && 'amount' in value) return inr(Number(value.amount) / 100);
+    if (key === 'totalSpend' && typeof value === 'number') return inr(value / 100);
+    return typeof value === 'number' ? value.toLocaleString('en-IN') : String(value);
+  };
 
   return (
     <Page title="Reports" navigation={navigation}>
+      {overview ? (
+        <Card style={{ gap: 12, padding: 14 }}>
+          <T size={15} w="semi" color={C.text}>Live overview</T>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T size={12} color={C.muted2}>Total spend</T>
+            <T size={12} w="semi" color={C.text}>{metric('totalSpend')}</T>
+          </Row>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T size={12} color={C.muted2}>Active campaigns</T>
+            <T size={12} w="semi" color={C.text}>{metric('activeCampaigns')}</T>
+          </Row>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T size={12} color={C.muted2}>Pending proposals</T>
+            <T size={12} w="semi" color={C.text}>{metric('pendingProposals')}</T>
+          </Row>
+        </Card>
+      ) : null}
+      <Row style={{ gap: 8 }}>
+        <Card onPress={() => exportReport('orders')} style={{ flex: 1, alignItems: 'center', padding: 12 }}>
+          <T size={12} w="semi" color={C.text}>Export orders CSV</T>
+        </Card>
+        <Card onPress={() => exportReport('campaigns')} style={{ flex: 1, alignItems: 'center', padding: 12 }}>
+          <T size={12} w="semi" color={C.text}>Export campaigns CSV</T>
+        </Card>
+      </Row>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <T size={12} color={C.muted2}>Based on {orders.length} campaign {orders.length === 1 ? 'order' : 'orders'}</T>
         <View style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: C.border2, backgroundColor: C.surface }}>
@@ -78,7 +123,7 @@ export function Reporting({ navigation }: any) {
         </View>
       </Card>
       <T size={11} color={C.muted} style={{ lineHeight: 17 }}>
-        Totals are calculated from your live campaign orders. Reach analytics and report exports aren’t available here yet.
+        Live metrics and CSV exports are provided by the reports service.
       </T>
     </Page>
   );

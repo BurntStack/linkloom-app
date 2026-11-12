@@ -1,21 +1,41 @@
 import { CampaignUsageRights } from '../data';
 import { queryString, request, requestPage, rupeesToPaise } from './client';
 
-export async function getCampaigns(cursor?: string) {
-  return requestPage<any>(`/v1/campaigns/${queryString({ limit: 50, cursor })}`);
+function apiUsageRights(rights?: CampaignUsageRights) {
+  if (!rights) return undefined;
+  return {
+    duration: rights.duration,
+    channels: rights.channels,
+    exclusivity: rights.exclusivity,
+    territory: rights.territory,
+  };
+}
+
+export async function getCampaigns(cursor?: string, filters: {
+  platform?: string; category?: string; budgetMin__gte?: number; budgetMax__lte?: number; search?: string;
+} = {}) {
+  const { budgetMin__gte, budgetMax__lte, ...otherFilters } = filters;
+  return requestPage<any>(`/v1/campaigns/${queryString({
+    limit: 50, cursor, ...otherFilters,
+    ...(budgetMin__gte !== undefined ? { budgetMin__gte: rupeesToPaise(budgetMin__gte) } : {}),
+    ...(budgetMax__lte !== undefined ? { budgetMax__lte: rupeesToPaise(budgetMax__lte) } : {}),
+    ...(otherFilters.platform ? { platform: otherFilters.platform.trim().toLowerCase() } : {}),
+  })}`);
 }
 
 export async function createCampaign(input: {
   title: string; brief: string; platform: string; deliverables: string; budgetMin: number; budgetMax: number;
   closesAt?: string; usageRights?: CampaignUsageRights;
 }) {
+  const { usageRights, ...campaign } = input;
   return request<any>('/v1/campaigns/', {
     method: 'POST',
     body: JSON.stringify({
-      ...input,
+      ...campaign,
       platform: input.platform.trim().toLowerCase(),
       budgetMin: rupeesToPaise(input.budgetMin),
       budgetMax: rupeesToPaise(input.budgetMax),
+      ...(usageRights ? { usageRights: apiUsageRights(usageRights) } : {}),
     }),
   });
 }
@@ -28,11 +48,13 @@ export async function updateCampaign(id: string, input: Partial<{
   title: string; brief: string; platform: string; deliverables: string; budgetMin: number; budgetMax: number;
   closesAt: string; usageRights: CampaignUsageRights;
 }>) {
+  const { usageRights, ...campaign } = input;
   const body = {
-    ...input,
+    ...campaign,
     ...(input.platform ? { platform: input.platform.trim().toLowerCase() } : {}),
     ...(input.budgetMin !== undefined ? { budgetMin: rupeesToPaise(input.budgetMin) } : {}),
     ...(input.budgetMax !== undefined ? { budgetMax: rupeesToPaise(input.budgetMax) } : {}),
+    ...(usageRights ? { usageRights: apiUsageRights(usageRights) } : {}),
   };
   return request<any>(`/v1/campaigns/${encodeURIComponent(id)}/`, { method: 'PATCH', body: JSON.stringify(body) });
 }
@@ -45,14 +67,14 @@ export async function getCampaignBids(campaignId: string, cursor?: string) {
   return requestPage<any>(`/v1/campaigns/${encodeURIComponent(campaignId)}/bids/${queryString({ limit: 50, cursor })}`);
 }
 
-export async function submitCampaignBid(campaignId: string, input: { price: number; message: string; expectedViews?: number; deliveryDays?: number }) {
+export async function submitCampaignBid(campaignId: string, input: { price: number; message: string; deliveryDays?: number }) {
   return request<any>(`/v1/campaigns/${encodeURIComponent(campaignId)}/bids/`, {
     method: 'POST',
-    body: JSON.stringify({ ...input, price: rupeesToPaise(input.price) }),
+    body: JSON.stringify({ price: rupeesToPaise(input.price), message: input.message, deliveryDays: input.deliveryDays }),
   });
 }
 
-export async function updateCampaignBid(campaignId: string, bidId: string, input: Partial<{ price: number; message: string; expectedViews: number; deliveryDays: number }>) {
+export async function updateCampaignBid(campaignId: string, bidId: string, input: Partial<{ price: number; message: string; deliveryDays: number }>) {
   const body = {
     ...input,
     ...(input.price !== undefined ? { price: rupeesToPaise(input.price) } : {}),

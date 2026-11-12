@@ -7,6 +7,7 @@ import { Avatar, Btn, Card, Field, Heading, Row, Select, StackHeader, T } from '
 import { CATEGORIES, CreatorAccountProfile } from '../../../data';
 import { C, TYPO } from '../../../theme';
 import { useApp } from '../../../store';
+import { uploadCreatorAvatar } from '../../../api';
 
 export function CreatorSetup({ navigation, route }: any) {
   const { creatorProfile, setCreatorProfile, findCreatorProfile, login, saveCreatorOnboarding, initializeWorkspace, sessionUser, showToast } = useApp();
@@ -18,6 +19,7 @@ export function CreatorSetup({ navigation, route }: any) {
     : findCreatorProfile(email);
   const [name, setName] = useState(current?.name || route.params?.initialName || '');
   const [photoUrl, setPhotoUrl] = useState(current?.photoUrl || '');
+  const [photoFile, setPhotoFile] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [mobile, setMobile] = useState(current?.mobile || '');
   const [dateOfBirth, setDateOfBirth] = useState(current?.dateOfBirth || '');
   const [gender, setGender] = useState(current?.gender || 'Prefer not to say');
@@ -62,7 +64,16 @@ export function CreatorSetup({ navigation, route }: any) {
         aspect: [1, 1],
         quality: 0.85,
       });
-      if (!result.canceled) setPhotoUrl(result.assets[0].uri);
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        const extension = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
+        setPhotoFile({
+          uri: asset.uri,
+          name: asset.fileName || `creator-avatar.${extension}`,
+          type: asset.mimeType || `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+        });
+        setPhotoUrl(asset.uri);
+      }
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Unable to open your photo library.');
     }
@@ -103,7 +114,17 @@ export function CreatorSetup({ navigation, route }: any) {
       ].filter((item) => item.handle),
     };
     try {
-      const saved = await saveCreatorOnboarding(profile);
+      let submittedProfile = profile;
+      if (photoFile) {
+        const uploaded = await uploadCreatorAvatar(photoFile);
+        const avatarUrl = uploaded.avatarUrl || uploaded.avatar_url || uploaded.url ||
+          uploaded.creator?.avatarUrl || uploaded.creator?.avatar_url;
+        if (typeof avatarUrl !== 'string' || !avatarUrl) {
+          throw new Error('The server did not return the uploaded profile photo URL.');
+        }
+        submittedProfile = { ...profile, photoUrl: avatarUrl };
+      }
+      const saved = await saveCreatorOnboarding(submittedProfile);
       setCreatorProfile(saved);
       if (editing) {
         showToast('Creator profile saved.');
@@ -130,9 +151,15 @@ export function CreatorSetup({ navigation, route }: any) {
           <Avatar name={name || 'Creator'} size={76} photo={photoUrl ? { uri: photoUrl } : undefined} />
           <Row style={{ gap: 8 }}>
             <Btn label="Choose photo" icon="image-outline" onPress={choosePhoto} variant="outline" />
-            {photoUrl ? <Btn label="Remove" icon="close-outline" onPress={() => setPhotoUrl('')} variant="ghost" /> : null}
+            {photoUrl ? <Btn label="Remove" icon="close-outline" onPress={() => { setPhotoUrl(''); setPhotoFile(null); }} variant="ghost" /> : null}
           </Row>
-          <Field label="Or enter a photo URL" value={photoUrl.startsWith('http') ? photoUrl : ''} onChangeText={setPhotoUrl} placeholder="https://…" keyboardType="url" />
+          <Field
+            label="Or enter a photo URL"
+            value={photoUrl.startsWith('http') ? photoUrl : ''}
+            onChangeText={(value) => { setPhotoUrl(value); setPhotoFile(null); }}
+            placeholder="https://…"
+            keyboardType="url"
+          />
         </Card>
         <Heading title="Personal details" sub="These details help complete your creator profile." />
         <Field label="Mobile number" value={phone || mobile} onChangeText={setMobile} placeholder="+91…" keyboardType="phone-pad" />

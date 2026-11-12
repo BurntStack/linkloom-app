@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from '../../../theme';
@@ -6,9 +6,16 @@ import { useApp } from '../../../store';
 import { Avatar, Btn, Card, Field, Sheet, T } from '../../../components/ui';
 
 export function Messages() {
-  const { closeSheet, sheet, conversations, openSheet, sendMessage, showToast } = useApp();
+  const { closeSheet, sheet, conversations, openSheet, sendMessage, loadConversationMessages, showToast } = useApp();
   const [draft, setDraft] = useState('');
   const conversation = conversations.find((item: any) => item.id === sheet.params?.conversationId);
+  useEffect(() => {
+    if (conversation?.id) {
+      loadConversationMessages(conversation.id).catch((error: unknown) =>
+        showToast(error instanceof Error ? error.message : 'Unable to load messages.'),
+      );
+    }
+  }, [conversation?.id]);
 
   return (
     <Sheet
@@ -42,9 +49,13 @@ export function Messages() {
             <Btn
               label="Send message"
               icon="send-outline"
-              onPress={() => {
-                if (sendMessage(conversation.id, draft)) setDraft('');
-                else if (!draft.trim()) showToast('Write a message before sending.');
+              onPress={async () => {
+                try {
+                  if (await sendMessage(conversation.id, draft)) setDraft('');
+                  else if (!draft.trim()) showToast('Write a message before sending.');
+                } catch (error) {
+                  showToast(error instanceof Error ? error.message : 'Unable to send message.');
+                }
               }}
             />
           </View>

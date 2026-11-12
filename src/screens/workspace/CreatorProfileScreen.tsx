@@ -207,9 +207,13 @@ export function CreatorProfile({ navigation, route }: any) {
               variant="outline"
               flex
               icon="chatbubble-outline"
-              onPress={() => {
-                const conversationId = startConversation({ creatorId: c.id, creatorName: c.name });
-                if (conversationId) openSheet('messages', { conversationId });
+              onPress={async () => {
+                try {
+                  const conversationId = await startConversation({ creatorId: c.id, creatorName: c.name });
+                  if (conversationId) openSheet('messages', { conversationId });
+                } catch (error) {
+                  showToast(error instanceof Error ? error.message : 'Unable to start conversation.');
+                }
               }}
             />
           </Row>

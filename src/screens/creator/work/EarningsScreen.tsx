@@ -1,17 +1,62 @@
-import React from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Share, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Heading, Row, T } from '../../../components/ui';
+import { Btn, Card, Field, Heading, Row, T } from '../../../components/ui';
 import { C, inr } from '../../../theme';
 import { useApp } from '../../../store';
 import { CreatorHeader, Empty, Page } from '../shared';
+import { exportTransactionsReport, getCreatorWallet, requestCreatorWithdrawal } from '../../../api';
 
 export function CreatorEarnings({ navigation }: any) {
-  const { orders } = useApp();
+  const { orders, showToast } = useApp();
+  const [wallet, setWallet] = useState<any>(null);
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [payoutMethod, setPayoutMethod] = useState<'upi' | 'bank_transfer'>('upi');
+  const [destination, setDestination] = useState('');
+  const [savingWithdrawal, setSavingWithdrawal] = useState(false);
+  const refreshWallet = async () => {
+    const response = await getCreatorWallet();
+    setWallet(response.wallet || response);
+  };
+  useEffect(() => {
+    refreshWallet().catch((error: unknown) => showToast(error instanceof Error ? error.message : 'Unable to load wallet.'));
+  }, []);
   const releasedOrders = orders.filter((order: any) => order.stage === 'released');
   const activeOrders = orders.filter((order: any) => order.stage !== 'released');
   const earned = releasedOrders.reduce((total: number, order: any) => total + (order.fee || 0), 0);
   const escrow = activeOrders.reduce((total: number, order: any) => total + (order.held || 0), 0);
+  const amountInRupees = (value: any) => {
+    const amount = typeof value === 'object' && value !== null ? value.amount : value;
+    return Number(amount || 0) / 100;
+  };
+  const availableBalance = amountInRupees(wallet?.availableBalance ?? wallet?.available_balance);
+  const pendingEscrow = amountInRupees(wallet?.pendingEscrowBalance ?? wallet?.pending_escrow_balance);
+  const totalEarnings = amountInRupees(wallet?.totalEarnings ?? wallet?.total_earnings);
+  const withdraw = async () => {
+    const amount = Number(withdrawalAmount);
+    if (!Number.isFinite(amount) || amount < 500) return showToast('Minimum withdrawal is ₹500.');
+    if (amount > availableBalance) return showToast('Withdrawal amount exceeds your available balance.');
+    if (!destination.trim()) return showToast('Enter your payout destination.');
+    setSavingWithdrawal(true);
+    try {
+      await requestCreatorWithdrawal({ amount, payoutMethod, destination: destination.trim() });
+      setWithdrawalAmount('');
+      await refreshWallet();
+      showToast('Withdrawal request submitted.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to request withdrawal.');
+    } finally {
+      setSavingWithdrawal(false);
+    }
+  };
+  const exportTransactions = async () => {
+    try {
+      const csv = await exportTransactionsReport();
+      await Share.share({ title: 'transactions.csv', message: csv });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to export transactions.');
+    }
+  };
 
   return (
     <Page navigation={navigation} showTopBar={false} header={<CreatorHeader navigation={navigation} title="Earnings" />}>
@@ -34,6 +79,55 @@ export function CreatorEarnings({ navigation }: any) {
           <T size={11} w="semi" color={C.onDark}>Escrowed · {inr(escrow)}</T>
         </Row>
       </Card>
+      {wallet ? (
+        <>
+          <Card style={{ gap: 10, padding: 15 }}>
+            <Heading title="Creator wallet" sub="Balances and payout requests from your wallet." />
+            <Row style={{ justifyContent: 'space-between' }}>
+              <T size={12} color={C.muted}>Available to withdraw</T>
+              <T size={13} w="semi" color={C.text}>{inr(availableBalance)}</T>
+            </Row>
+            <Row style={{ justifyContent: 'space-between' }}>
+              <T size={12} color={C.muted}>Pending escrow</T>
+              <T size={13} w="semi" color={C.text}>{inr(pendingEscrow)}</T>
+            </Row>
+            <Row style={{ justifyContent: 'space-between' }}>
+              <T size={12} color={C.muted}>Total earnings</T>
+              <T size={13} w="semi" color={C.text}>{inr(totalEarnings)}</T>
+            </Row>
+          </Card>
+          <Card style={{ gap: 11, padding: 15 }}>
+            <T size={15} w="semi" color={C.text}>Request a payout</T>
+            <Field label="Amount (minimum ₹500)" value={withdrawalAmount} onChangeText={(value) => setWithdrawalAmount(value.replace(/[^\d.]/g, ''))} placeholder="500" keyboardType="decimal-pad" />
+            <Row style={{ gap: 8 }}>
+              {(['upi', 'bank_transfer'] as const).map((method) => (
+                <Btn
+                  key={method}
+                  flex
+                  small
+                  variant={payoutMethod === method ? 'dark' : 'outline'}
+                  label={method === 'upi' ? 'UPI' : 'Bank transfer'}
+                  onPress={() => setPayoutMethod(method)}
+                />
+              ))}
+            </Row>
+            <Field label={payoutMethod === 'upi' ? 'UPI ID' : 'Bank payout destination'} value={destination} onChangeText={setDestination} placeholder={payoutMethod === 'upi' ? 'name@bank' : 'Account details / beneficiary'} />
+            <Btn label={savingWithdrawal ? 'Submitting…' : 'Request withdrawal'} onPress={withdraw} loading={savingWithdrawal} />
+          </Card>
+          <Btn label="Share transactions CSV" icon="download-outline" variant="outline" onPress={exportTransactions} />
+          {(wallet.withdrawals || wallet.withdrawalHistory || wallet.withdrawal_history || []).length ? (
+            <Card style={{ gap: 10, padding: 14 }}>
+              <T size={14} w="semi" color={C.text}>Withdrawal history</T>
+              {(wallet.withdrawals || wallet.withdrawalHistory || wallet.withdrawal_history).map((item: any, index: number) => (
+                <Row key={String(item.id || index)} style={{ justifyContent: 'space-between' }}>
+                  <T size={12} color={C.muted}>{item.status || item.payoutMethod || item.payout_method || 'Withdrawal'}</T>
+                  <T size={12} w="semi" color={C.text}>{inr(amountInRupees(item.amount))}</T>
+                </Row>
+              ))}
+            </Card>
+          ) : null}
+        </>
+      ) : null}
       <Row style={{ gap: 10 }}>
         <Card style={{ flex: 1, gap: 7, padding: 14 }}>
           <T size={11} color={C.muted}>Released orders</T>
@@ -86,7 +180,7 @@ export function CreatorEarnings({ navigation }: any) {
       <Card style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 9, padding: 13 }}>
         <Ionicons name="information-circle-outline" size={17} color={C.muted} />
         <T size={11} color={C.muted} style={{ flex: 1, lineHeight: 16 }}>
-          Bank payout setup and withdrawal tracking are not available yet. Released means the brand released the order funds; it does not confirm a bank transfer.
+          Released means the brand released the order funds; your wallet balance and payout history are shown separately above.
         </T>
       </Card>
     </Page>

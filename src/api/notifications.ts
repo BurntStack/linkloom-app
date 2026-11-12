@@ -1,7 +1,7 @@
 import { queryString, request, requestPage } from './client';
 
-export async function getNotifications(cursor?: string) {
-  return requestPage<any>(`/v1/notifications/${queryString({ limit: 50, cursor })}`);
+export async function getNotifications(cursor?: string, unread?: boolean) {
+  return requestPage<any>(`/v1/notifications/${queryString({ limit: 50, cursor, unread: unread === undefined ? undefined : String(unread) })}`);
 }
 
 export async function getUnreadNotificationCount() {

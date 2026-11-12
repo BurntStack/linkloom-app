@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Card, StackHeader, T } from '../../../components/ui';
+import { EmailVerification } from '../../../components/ui/EmailVerification';
 import { C } from '../../../theme';
 import { useApp } from '../../../store';
 
@@ -43,6 +44,7 @@ export function CreatorSettings({ navigation }: any) {
             <T size={11} color={C.muted} numberOfLines={1}>{creatorProfile?.email || creatorProfile?.mobile || 'Update your profile details'}</T>
           </View>
         </Card>
+        <EmailVerification />
         <View style={{ gap: 7 }}>
           <T size={10.5} w="bold" color={C.muted} track={0.7}>PROFILE</T>
           <Card style={{ paddingVertical: 5, paddingHorizontal: 13 }}>

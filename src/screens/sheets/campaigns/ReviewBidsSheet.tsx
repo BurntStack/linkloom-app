@@ -172,15 +172,19 @@ export function ReviewBids({ jobId }: { jobId: string }) {
                 small
                 variant="ghost"
                 icon="chatbubble-outline"
-                onPress={() => {
-                  const conversationId = startConversation({
+                onPress={async () => {
+                  try {
+                    const conversationId = await startConversation({
                     creatorId: b.creatorId,
                     creatorName,
                     creatorPhotoUrl: b.creatorPhotoUrl,
                     jobId: job.id,
                     jobTitle: job.title,
-                  });
-                  if (conversationId) openSheet('messages', { conversationId });
+                    });
+                    if (conversationId) openSheet('messages', { conversationId });
+                  } catch (error) {
+                    showToast(error instanceof Error ? error.message : 'Unable to start conversation.');
+                  }
                 }}
               />
               <Btn label="Confirm" small variant="dark" disabled={hiringBidId === b.id} onPress={() => setConfirmBidId(b.id)} />

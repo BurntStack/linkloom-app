@@ -20,6 +20,8 @@ import {
   getCampaignBids,
   getCampaign,
   getCampaigns,
+  getConversations,
+  getConversationMessages,
   getCreator,
   getCreatorCampaigns,
   getCreatorOffers,
@@ -49,6 +51,8 @@ import {
   reviewOrder as reviewOrderRequest,
   saveBrandProfile,
   saveCreatorProfile as saveCreatorProfileRequest,
+  sendConversationMessage,
+  startConversation as startConversationRequest,
   selectCampaignBid,
   submitOrderDeliverable,
   submitCampaignBid,
@@ -60,6 +64,7 @@ import {
   withdrawOffer,
   type AuthRole,
   type BrandOnboarding,
+  type UsageRights,
 } from '../api';
 import { Ctx } from './AppContext';
 import { navRef } from './navigation';
@@ -164,7 +169,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const response = await submitCampaignBid(bid.jobId, {
       price: bid.price,
       message: bid.proposal,
-      expectedViews: bid.expectedViews,
       deliveryDays: bid.deliveryDays,
     });
     const savedBid = {
@@ -278,7 +282,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCart(mapped);
     return mapped;
   };
-  const searchCreators = useCallback((filters: { q?: string; category?: string; location?: string; platform?: string; minPrice?: number; maxPrice?: number } = {}) => {
+  const searchCreators = useCallback((filters: {
+    q?: string; category?: string; location?: string; platform?: string; minPrice?: number; maxPrice?: number; verified?: boolean;
+  } = {}) => {
     const key = JSON.stringify(filters);
     const existing = creatorSearchInFlight.current.get(key);
     if (existing) return existing;
@@ -426,13 +432,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const remainsSaved = details.some((list) => !containingLists.some((removed) => removed.id === list.id) && list.creatorIds.includes(creatorId));
     if (!remainsSaved) setSaved((previous) => previous.filter((id) => id !== creatorId));
   };
-  const createPackage = async (input: { title: string; platform: string; deliverables: string; price: number; deliveryDays: number }) => {
+  const createPackage = async (input: {
+    title: string; description: string; platform: string; deliverables: string; price: number; deliveryDays: number;
+  }) => {
     const response = await createCreatorPackage(input);
     const savedPackage = mapPackage(response.package || response);
     setCreatorPackages((previous) => [savedPackage, ...previous.filter((item) => item.id !== savedPackage.id)]);
     return savedPackage;
   };
-  const updatePackage = async (id: string, input: Partial<{ title: string; platform: string; deliverables: string; price: number; deliveryDays: number }>) => {
+  const updatePackage = async (id: string, input: Partial<{
+    title: string; description: string; platform: string; deliverables: string; price: number; deliveryDays: number;
+  }>) => {
     const response = await updateCreatorPackage(id, input);
     const updated = mapPackage(response.package || response);
     setCreatorPackages((previous) => previous.map((item) => item.id === id ? { ...item, ...updated } : item));
@@ -442,7 +452,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await deleteCreatorPackage(id);
     setCreatorPackages((previous) => previous.filter((item) => item.id !== id));
   };
-  const sendOffer = async (input: { creatorId: string; deliverable: string; budget: number; deadline: string; message: string; usageRights: string }) => {
+  const sendOffer = async (input: {
+    creatorId: string; deliverable: string; budget: number; deadline: string; message: string; usageRights: UsageRights;
+  }) => {
     const response = await createOffer(input);
     const offer = mapOffer(response.offer || response);
     setOffers((previous) => [offer, ...previous.filter((item) => item.id !== offer.id)]);
@@ -510,10 +522,73 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUnread(count?.count ?? count?.unreadCount ?? 0);
     return items;
   };
+  const mapConversationRecord = (record: any): Conversation => {
+    const conversation = record.conversation || record;
+    const creator = conversation.creator || {};
+    const messages = Array.isArray(conversation.messages)
+      ? conversation.messages
+      : conversation.latestMessage || conversation.latest_message
+        ? [conversation.latestMessage || conversation.latest_message]
+        : [];
+    return {
+      id: String(conversation.id || conversation.conversationId || conversation.conversation_id || ''),
+      creatorId: String(conversation.creatorId || conversation.creator_id || creator.id || ''),
+      creatorName: creator.displayName || creator.display_name || creator.name || conversation.creatorName || conversation.creator_name || 'Creator',
+      creatorPhotoUrl: creator.avatarUrl || creator.avatar_url || conversation.creatorPhotoUrl || conversation.creator_photo_url,
+      brandName: conversation.brand?.name || conversation.brandName || conversation.brand_name || brandName,
+      jobId: String(conversation.orderId || conversation.order_id || conversation.campaignId || conversation.campaign_id || ''),
+      jobTitle: conversation.order?.title || conversation.campaign?.title || conversation.jobTitle || conversation.job_title || '',
+      messages: messages.map((message: any, index: number) => {
+        const senderObject = typeof message.sender === 'object' && message.sender ? message.sender : {};
+        const senderValue = String(senderObject.role || message.senderRole || message.sender_role || message.sender || '').toLowerCase();
+        const ownMessage = String(message.senderId || message.sender_id || senderObject.id || '') === String(sessionUser?.id || '');
+        const sender: ChatMessage['sender'] = senderValue.includes('creator')
+          ? 'creator'
+          : senderValue.includes('brand')
+            ? 'brand'
+            : ownMessage
+              ? accountRole
+              : accountRole === 'brand' ? 'creator' : 'brand';
+        return {
+          id: String(message.id || message.messageId || message.message_id || `${conversation.id}-${index}`),
+          sender,
+          text: String(message.content || message.text || message.message || ''),
+          sentAt: message.createdAt || message.created_at || message.sentAt || message.sent_at || '',
+        };
+      }),
+    };
+  };
+  const refreshConversations = async () => {
+    const items: any[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    do {
+      const page = await getConversations(cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+      if (cursor && seenCursors.has(cursor)) throw new Error('Conversation pagination repeated a cursor.');
+      if (cursor) seenCursors.add(cursor);
+    } while (cursor);
+    const conversations = items.map(mapConversationRecord);
+    setConversations(conversations);
+    return conversations;
+  };
+  const loadConversationMessages = async (id: string) => {
+    const items: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await getConversationMessages(id, cursor);
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    const messages = mapConversationRecord({ id, messages: items }).messages;
+    setConversations((previous) => previous.map((item) => item.id === id ? { ...item, messages } : item));
+    return messages;
+  };
   const initializeWorkspace = async (role: AuthRole = accountRole, creatorId?: string) => {
     const tasks = role === 'creator'
-      ? [refreshCampaigns(), refreshCreatorBids(creatorId), refreshOrders(role), refreshCreatorPackages(), refreshOffers(role), refreshNotifications()]
-      : [refreshCampaigns(), refreshOrders(role), refreshLists(), refreshNotifications(), searchCreators(), refreshOffers(role), refreshCart()];
+      ? [refreshCampaigns(), refreshCreatorBids(creatorId), refreshOrders(role), refreshCreatorPackages(), refreshOffers(role), refreshNotifications(), refreshConversations()]
+      : [refreshCampaigns(), refreshOrders(role), refreshLists(), refreshNotifications(), searchCreators(), refreshOffers(role), refreshCart(), refreshConversations()];
     const results = await Promise.allSettled(tasks);
     const failed = results.find((result) => result.status === 'rejected');
     if (failed?.status === 'rejected') {
@@ -545,13 +620,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       location: profile.city,
       primaryPlatform: profile.primaryPlatform || profile.platforms[0]?.name,
       repliesWithin: profile.repliesWithin,
+      dob: profile.dateOfBirth,
+      gender: profile.gender.toLowerCase().replace(/\s+/g, '_'),
+      socialAccounts: profile.platforms.map((item) => ({
+        platform: item.name.toLowerCase(),
+        handle: item.handle,
+      })),
     });
+    const mapped = mapCreatorProfile(response.creator || response.profile || response);
     const saved = {
       ...profile,
-      ...mapCreatorProfile(response.creator || response.profile || response),
-      photoUrl: profile.photoUrl,
-      dateOfBirth: profile.dateOfBirth,
-      gender: profile.gender,
+      ...mapped,
+      photoUrl: profile.photoUrl.startsWith('http') ? profile.photoUrl : mapped.photoUrl,
+      dateOfBirth: mapped.dateOfBirth || profile.dateOfBirth,
+      gender: mapped.gender || profile.gender,
       languages: profile.languages,
       platforms: profile.platforms,
     };
@@ -576,18 +658,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if ((error as any)?.status !== 401) showToast(error instanceof Error ? error.message : 'Unable to restore your session.');
     }
   };
-  const startConversation = (input: Omit<Conversation, 'id' | 'messages'>) => {
+  const refreshSessionUser = async () => {
+    const user = await getCurrentUser();
+    setSessionUser(user.user || user);
+    return user.user || user;
+  };
+  const startConversation = async (input: Omit<Conversation, 'id' | 'messages'>) => {
     if (accountRole !== 'brand') {
       showToast('Creators can reply after a brand starts the conversation.');
       return null;
     }
-    const id = `conversation-${input.creatorId}-${input.jobId || 'direct'}`;
-    setConversations((previous) => previous.some((conversation) => conversation.id === id)
-      ? previous
-      : [{ ...input, brandName: input.brandName || brandName, id, messages: [] }, ...previous]);
-    return id;
+    const response = await startConversationRequest({ creatorId: input.creatorId });
+    const conversation = mapConversationRecord(response.conversation || response);
+    if (!conversation.id) throw new Error('The server did not return a conversation ID.');
+    const mapped = {
+      ...conversation,
+      ...input,
+      id: conversation.id,
+      brandName: conversation.brandName || input.brandName || brandName,
+      messages: conversation.messages || [],
+    };
+    setConversations((previous) => [mapped, ...previous.filter((item) => item.id !== mapped.id)]);
+    return mapped.id;
   };
-  const sendMessage = (conversationId: string, text: string) => {
+  const sendMessage = async (conversationId: string, text: string) => {
     const conversation = conversations.find((item) => item.id === conversationId);
     if (!conversation || !text.trim()) return false;
     if (
@@ -597,11 +691,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       showToast('You can reply after the brand sends the first message.');
       return false;
     }
+    const response = await sendConversationMessage(conversationId, text);
+    const source = response.message || response;
+    const mappedMessage = mapConversationRecord({ id: conversationId, messages: [source] }).messages[0];
     const message: ChatMessage = {
-      id: `message-${Date.now()}`,
+      ...mappedMessage,
       sender: accountRole,
-      text: text.trim(),
-      sentAt: new Date().toISOString(),
+      text: mappedMessage.text || text.trim(),
+      sentAt: mappedMessage.sentAt || new Date().toISOString(),
     };
     setConversations((previous) => previous.map((item) => item.id === conversationId
       ? { ...item, messages: [...item.messages, message] }
@@ -705,7 +802,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCreatorBids((previous) => previous.map((bid) => bid.id === bidId ? { ...bid, status: 'withdrawn' } : bid));
     await refreshCreatorBids();
   };
-  const updateBid = async (jobId: string, bidId: string, input: { price?: number; message?: string; expectedViews?: number; deliveryDays?: number }) => {
+  const updateBid = async (jobId: string, bidId: string, input: { price?: number; message?: string; deliveryDays?: number }) => {
     const response = await updateCampaignBid(jobId, bidId, input);
     await refreshCreatorBids();
     return response;
@@ -748,7 +845,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <Ctx.Provider value={{
       loggedIn, login, logout, accountRole, brandName, setBrandName, brandProfile, setBrandProfile,
       creatorProfile, setCreatorProfile: saveCreatorProfile, findCreatorProfile, creatorBids, submitCreatorBid,
-      conversations, startConversation, sendMessage,
+      conversations, startConversation, sendMessage, refreshConversations, loadConversationMessages,
       jobs, addJob, updateJob, closeJob, refreshCampaigns, loadCampaignDetail, loadCampaignBids, hireBid, withdrawBid, updateBid,
       creatorSearchResults, searchCreators, loadPublicCreator,
       refreshCreatorBids, creatorPackages, refreshCreatorPackages, createPackage, updatePackage, removePackage,
@@ -759,7 +856,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deliverables, orders, refreshOrders, loadOrderDetails, submitDeliverable, approveOrder, requestRevision,
       cancelOrder, disputeOrder, reviewOrder, notifications, refreshNotifications, readNotification, readAllNotifications,
       loadCreatorReviews,
-      unread, sessionUser, loadBrandProfile, loadCreatorProfile, saveBrandOnboarding, saveCreatorOnboarding, restoreSession, initializeWorkspace,
+      unread, sessionUser, loadBrandProfile, loadCreatorProfile, saveBrandOnboarding, saveCreatorOnboarding, restoreSession, refreshSessionUser, initializeWorkspace,
       logoutAll,
       sheet, openSheet, closeSheet, toast, showToast, openCreator, setPendingCreator, reset,
     }}>
