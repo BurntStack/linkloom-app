@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { C, inr } from '../../../theme';
 import { useApp } from '../../../store';
 import { Btn, Card, Field, Row, Select, Sheet, T } from '../../../components/ui';
@@ -125,9 +126,19 @@ export function PostJob({ editId }: { editId?: string }) {
     <Sheet
       visible
       onClose={closeSheet}
-      fullScreen
       title={existing ? 'Edit job' : 'Post a job'}
       sub={`Step ${step + 1} of 4 · ${stepTitles[step]}`}
+      headerRight={
+        <Pressable
+          onPress={closeSheet}
+          accessibilityRole="button"
+          accessibilityLabel="Close post job form"
+          hitSlop={8}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.surfaceSoft, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="close" size={20} color={C.text} />
+        </Pressable>
+      }
       footer={
         <View style={{ gap: 10 }}>
           <Row style={{ gap: 5 }}>

@@ -24,7 +24,7 @@ const TABS: Record<string, [string, string, string]> = {
   Jobs: ['Jobs', 'briefcase-outline', 'briefcase'],
   Dashboard: ['Campaigns', 'albums-outline', 'albums'],
   Orders: ['Payments', 'wallet-outline', 'wallet'],
-  Create: ['Create', 'add', 'add'],
+  Create: ['Post', 'add', 'add'],
   FindJobs: ['Find Jobs', 'search-outline', 'search'],
   MyBids: ['My Bids', 'paper-plane-outline', 'paper-plane'],
   ActiveJobs: ['Active Jobs', 'briefcase-outline', 'briefcase'],
@@ -36,6 +36,9 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
   const { orders, openSheet } = useApp() || {};
   const awaitingOrders = orders?.filter((o: any) => o.stage === 'delivered').length || 0;
   const visibleRoutes = state.routes.filter((route) => route.name !== 'Create');
+  const createRoute = state.routes.find((route) => route.name === 'Create');
+  const jobsIndex = visibleRoutes.findIndex((route) => route.name === 'Jobs');
+  if (createRoute && jobsIndex !== -1) visibleRoutes.splice(jobsIndex, 1, createRoute);
   const currentRoute = state.routes[state.index]?.name;
 
   return (
@@ -52,7 +55,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
       }}
     >
       {visibleRoutes.map((r) => {
-        const active = currentRoute === r.name;
+        const active = currentRoute === r.name || (r.name === 'Create' && currentRoute === 'Jobs');
         const [label, off, on] = TABS[r.name] || [r.name, 'ellipse-outline', 'ellipse'];
         const showBadge = r.name === 'Orders' && awaitingOrders > 0;
 

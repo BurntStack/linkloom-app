@@ -13,6 +13,7 @@ export function Sheet({
   onClose,
   title,
   sub,
+  headerRight,
   children,
   footer,
   fullScreen = false,
@@ -21,6 +22,7 @@ export function Sheet({
   onClose: () => void;
   title?: string;
   sub?: string;
+  headerRight?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
   fullScreen?: boolean;
@@ -28,6 +30,18 @@ export function Sheet({
   const insets = useSafeAreaInsets();
   const { toast } = useApp();
   const { height } = useWindowDimensions();
+  const titleContent = title ? (
+    <>
+      <T size={18} w="bold" track={-0.3} color={C.text}>
+        {title}
+      </T>
+      {sub ? (
+        <T size={12.5} color={C.muted} style={{ lineHeight: 17 }}>
+          {sub}
+        </T>
+      ) : null}
+    </>
+  ) : null;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -61,15 +75,12 @@ export function Sheet({
 
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 18, gap: 14 }}>
             {title ? (
-              <View style={{ gap: 3 }}>
-                <T size={18} w="bold" track={-0.3} color={C.text}>
-                  {title}
-                </T>
-                {sub ? (
-                  <T size={12.5} color={C.muted} style={{ lineHeight: 17 }}>
-                    {sub}
-                  </T>
-                ) : null}
+              <View style={headerRight
+                ? { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }
+                : { gap: 3 }}
+              >
+                {headerRight ? <View style={{ flex: 1, gap: 3 }}>{titleContent}</View> : titleContent}
+                {headerRight}
               </View>
             ) : null}
             {children}
