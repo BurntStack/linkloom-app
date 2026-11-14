@@ -80,7 +80,7 @@ export function Onboarding({ route }: any) {
     >
       <View style={{ gap: 4 }}>
         <T size={11} w="bold" color={C.primary} track={0.8}>BRAND PROFILE</T>
-        <T size={26} w="semi" track={-0.7} color={C.text} style={{ fontFamily: 'Georgia' }}>
+        <T size={26} w="semi" track={-0.7} color={C.text}>
           Tell creators who you are
         </T>
         <T size={13} color={C.muted2} style={{ lineHeight: 19 }}>
@@ -95,7 +95,7 @@ export function Onboarding({ route }: any) {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: C.border2 }}>
           <View style={{ width: 48, height: 48, borderRadius: 15, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
-            <T size={21} w="semi" color={C.primary} style={{ fontFamily: 'Georgia' }}>
+            <T size={21} w="semi" color={C.primary}>
               {brand.trim().charAt(0).toUpperCase() || 'B'}
             </T>
           </View>

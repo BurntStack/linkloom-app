@@ -34,9 +34,9 @@ export function RoleSelection({ navigation, route }: any) {
 
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16, gap: 18 }}>
         <View style={{ gap: 6 }}>
-          <T size={26} w="semi" track={-0.7} color={C.text}>How will you use</T>
-          <T size={26} w="semi" track={-0.7} color={C.text}>Linkloom?</T>
-          <T size={12} color={C.muted} style={{ marginTop: 2 }}>Pick one. Each email and mobile number has one account.</T>
+          <T size={28} w="bold" track={-0.7} color={C.text}>How will you use</T>
+          <T size={28} w="bold" track={-0.7} color={C.text}>Linkloom?</T>
+          <T size={12} w="med" color={C.muted} style={{ marginTop: 2 }}>Pick one. Each email address has one account.</T>
         </View>
 
         <View style={{ gap: 10 }}>
@@ -84,7 +84,7 @@ export function RoleSelection({ navigation, route }: any) {
                   </View>
                   <View style={{ flex: 1, gap: 5 }}>
                     <T size={15} w="semi" color={C.text}>{role.title}</T>
-                    <T size={11.5} color={C.muted} style={{ lineHeight: 16 }}>{role.description}</T>
+                    <T size={11.5} w="med" color={C.muted} style={{ lineHeight: 16 }}>{role.description}</T>
                     <Row style={{ gap: 5, flexWrap: 'wrap', marginTop: 2 }}>
                       {role.features.map((feature) => (
                         <View key={feature} style={{ paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, borderWidth: 1, borderColor: C.border }}>
@@ -110,7 +110,7 @@ export function RoleSelection({ navigation, route }: any) {
           }}
           style={{ alignSelf: 'center', paddingVertical: 4 }}
         >
-          <T size={11} color={C.muted}>
+          <T size={11} w="med" color={C.muted}>
             {mode === 'signup' ? 'Have an account? ' : 'New to Linkloom? '}
             <T size={11} w="bold" color={C.text}>{mode === 'signup' ? 'Sign in' : 'Create an account'}</T>
           </T>

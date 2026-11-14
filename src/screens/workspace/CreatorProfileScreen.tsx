@@ -78,7 +78,7 @@ export function CreatorProfile({ navigation, route }: any) {
               <Avatar name={c.name} size={72} photo={c.photo} />
               <View style={{ flex: 1, gap: 4 }}>
                 <Row style={{ gap: 6, alignItems: 'center' }}>
-                  <T size={23} w="semi" color={C.text} style={{ fontFamily: 'Georgia' }}>
+                  <T size={23} w="semi" color={C.text}>
                     {c.name}
                   </T>
                   <Ionicons name="checkmark-circle" size={18} color={C.blue} />

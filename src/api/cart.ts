@@ -12,6 +12,7 @@ export async function removeCartItem(itemId: string) {
   return request(`/v1/cart/${encodeURIComponent(itemId)}/`, { method: 'DELETE' });
 }
 
-export async function checkoutCart(usageRights: string) {
-  return request<any>('/v1/cart/checkout/', { method: 'POST', body: JSON.stringify({ usageRights }) });
+export async function checkoutCart(cartId: string) {
+  if (!cartId.trim()) throw new Error('The server did not return a cart ID. Refresh the cart and try again.');
+  return request<any>('/v1/checkout/', { method: 'POST', body: JSON.stringify({ cartId }) });
 }

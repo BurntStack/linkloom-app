@@ -1,5 +1,5 @@
 export type AuthRole = 'brand' | 'creator';
-export type AuthChannel = 'sms' | 'email';
+export type AuthChannel = 'email';
 export type UsageRights = {
   duration: string;
   channels: string[];
@@ -26,7 +26,7 @@ export type BrandOnboarding = {
   billingAddress?: string;
 };
 
-export type ApiPage<T> = { items: T[]; nextCursor?: string; unreadCount?: number };
+export type ApiPage<T> = { items: T[]; nextCursor?: string; unreadCount?: number; cartId?: string };
 
 export type ApiEnvelope<T> = {
   success?: boolean;

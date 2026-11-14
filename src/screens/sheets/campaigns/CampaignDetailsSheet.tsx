@@ -31,7 +31,7 @@ export function CampaignDetails({ campaignId }: { campaignId: string }) {
             <Ionicons name={campaign.status === 'open' ? 'time-outline' : campaign.status === 'progress' ? 'sync-outline' : 'checkmark-circle-outline'} size={15} color={statusColor} />
             <T size={12} w="semi" color={statusColor}>{statusLabel}</T>
           </View>
-          <T size={25} w="semi" track={-0.7} color={C.text} style={{ fontFamily: 'Georgia', lineHeight: 31 }}>
+          <T size={25} w="semi" track={-0.7} color={C.text} style={{ lineHeight: 31 }}>
             {campaign.title}
           </T>
           <Row style={{ gap: 8, flexWrap: 'wrap' }}>

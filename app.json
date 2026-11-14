@@ -10,7 +10,10 @@
       "package": "com.brandside.app",
       "adaptiveIcon": {
         "backgroundColor": "#FFF16A"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-font",
@@ -21,7 +24,13 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      "expo-status-bar"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a37e434c-75c0-4553-be55-6004efa8257b"
+      }
+    }
   }
 }

@@ -3,12 +3,11 @@ import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { C, inr } from '../../theme';
 import { useApp } from '../../store';
-import { Avatar, Btn, Card, Field, Heading, Row, T } from '../../components/ui';
+import { Avatar, Btn, Card, Heading, Row, T } from '../../components/ui';
 import { Page } from './PageLayout';
 
 export function Cart({ navigation }: any) {
   const { cart, refreshCart, removeCartEntry, checkout, showToast } = useApp();
-  const [usageRights, setUsageRights] = useState('');
   const [busy, setBusy] = useState(false);
   const total = cart.reduce((sum: number, item: any) => sum + Number(item.price || 0), 0);
 
@@ -17,11 +16,11 @@ export function Cart({ navigation }: any) {
   }, []);
 
   const completeCheckout = async () => {
-    if (!usageRights.trim()) return showToast('Enter the usage rights for this order.');
+    if (!cart.length) return showToast('Your cart is empty.');
     setBusy(true);
     try {
-      await checkout(usageRights.trim());
-      showToast('Cart checkout completed.');
+      await checkout();
+      showToast('Checkout session created.');
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Unable to complete checkout.');
     } finally {
@@ -76,8 +75,7 @@ export function Cart({ navigation }: any) {
             <View style={{ height: 1, backgroundColor: C.borderSubtle }} />
             <T size={12} color={C.muted2} style={{ lineHeight: 18 }}>Payment is held securely and released only after you approve the completed work.</T>
           </Card>
-          <Field label="Usage rights" value={usageRights} onChangeText={setUsageRights} multiline placeholder="Describe the rights for the order" />
-          <Btn label={busy ? 'Checking out…' : 'Continue to checkout'} icon="lock-closed-outline" disabled={busy} onPress={completeCheckout} />
+          <Btn label={busy ? 'Creating checkout…' : 'Continue to checkout'} icon="lock-closed-outline" disabled={busy} onPress={completeCheckout} />
           <T size={11} color={C.muted} style={{ textAlign: 'center' }}>You won’t be charged until checkout is complete.</T>
         </>
       ) : null}

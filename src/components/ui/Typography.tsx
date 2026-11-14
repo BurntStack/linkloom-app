@@ -16,7 +16,7 @@ export function T({ size = TYPO.body, w = 'reg', color = C.text, track, style, c
       maxFontSizeMultiplier={1.16}
       style={[
         {
-          fontFamily: F[w],
+          fontFamily: F[w === 'semi' ? 'bold' : w],
           fontSize: size,
           color,
           letterSpacing: track !== undefined ? track : -0.2,

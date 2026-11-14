@@ -67,7 +67,7 @@ export function Field({
           maxFontSizeMultiplier={1.16}
           style={{
             flex: 1,
-            fontFamily: F.reg,
+            fontFamily: F.med,
             fontSize: TYPO.body,
             color: C.text,
             backgroundColor: 'transparent',
@@ -119,7 +119,7 @@ export function Select({
           paddingVertical: 11,
         }}
       >
-        <T size={TYPO.body} numberOfLines={1} style={{ flex: 1 }} color={C.text}>
+        <T size={TYPO.body} w="med" numberOfLines={1} style={{ flex: 1 }} color={C.text}>
           {value}
         </T>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={15} color={C.muted} />
@@ -153,7 +153,7 @@ export function Select({
                 alignItems: 'center',
               }}
             >
-              <T size={13} w={o === value ? 'semi' : 'reg'} color={o === value ? C.primary : C.text}>
+              <T size={13} w={o === value ? 'semi' : 'med'} color={o === value ? C.primary : C.text}>
                 {o}
               </T>
               {o === value ? <Ionicons name="checkmark" size={15} color={C.primary} /> : null}

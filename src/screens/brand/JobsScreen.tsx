@@ -48,7 +48,7 @@ export function Jobs({ navigation }: any) {
   return (
     <Screen navigation={navigation}>
       <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <T size={30} w="semi" track={-0.8} color={C.text} style={{ fontFamily: 'Georgia' }}>Campaigns</T>
+        <T size={30} w="semi" track={-0.8} color={C.text}>Campaigns</T>
         <Row style={{ gap: 12 }}>
           <Pressable onPress={() => setSearchOpen((value) => !value)} hitSlop={8} accessibilityLabel="Search campaigns" style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="search-outline" size={22} color={C.text} />

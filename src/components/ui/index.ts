@@ -9,3 +9,4 @@ export * from './Header';
 export * from './Sheet';
 export * from './Toast';
 export * from './Cards';
+export * from './AppearanceToggle';

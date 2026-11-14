@@ -146,7 +146,7 @@ export function PostJob({ editId }: { editId?: string }) {
         </View>
       }
     >
-      <T size={24} w="semi" track={-0.7} color={C.text} style={{ fontFamily: 'Georgia' }}>{stepHeadings[step]}</T>
+      <T size={24} w="semi" track={-0.7} color={C.text}>{stepHeadings[step]}</T>
       <T size={13} color={C.muted2}>{stepSubtitles[step]}</T>
 
       {step === 0 ? (

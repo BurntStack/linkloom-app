@@ -1,4 +1,6 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useColorScheme } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { CommonActions } from '@react-navigation/native';
 import { CREATORS, JOBS, LISTS, ORDERS, Creator, CreatorAccountProfile, Job, Bid } from '../data';
 import {
@@ -68,6 +70,7 @@ import {
 } from '../api';
 import { Ctx } from './AppContext';
 import { navRef } from './navigation';
+import { setColorScheme } from '../theme';
 import { Sheet, ChatMessage, Conversation } from './types';
 import {
   mapCampaign,
@@ -84,6 +87,10 @@ import {
 } from './mappers';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const systemColorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system');
+  const colorScheme = themeMode === 'system' ? systemColorScheme : themeMode;
+  setColorScheme(colorScheme);
   const [loggedIn, setLoggedIn] = useState(false);
   const [brandName, setBrandName] = useState('');
   const [accountRole, setAccountRole] = useState<'brand' | 'creator'>('brand');
@@ -94,6 +101,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [creatorPackages, setCreatorPackages] = useState<any[]>([]);
   const [offers, setOffers] = useState<any[]>([]);
   const [cart, setCart] = useState<any[]>([]);
+  const [cartId, setCartId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [jobs, setJobs] = useState<Job[]>(JOBS);
   const [creatorSearchResults, setCreatorSearchResults] = useState<Creator[]>([]);
@@ -117,6 +125,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setToast(null), 2600);
   }, []);
+  useEffect(() => {
+    let active = true;
+    SecureStore.getItemAsync('brandside.themeMode').then((savedMode) => {
+      if (active && (savedMode === 'light' || savedMode === 'dark')) setThemeMode(savedMode);
+    }).catch((error) => {
+      if (active) showToast(error instanceof Error ? error.message : 'Unable to load saved theme.');
+    });
+    return () => { active = false; };
+  }, [showToast]);
+  const toggleColorScheme = async () => {
+    const nextMode = colorScheme === 'dark' ? 'light' : 'dark';
+    setThemeMode(nextMode);
+    try {
+      await SecureStore.setItemAsync('brandside.themeMode', nextMode);
+    } catch (error) {
+      showToast(error instanceof Error ? `Theme changed, but could not save the preference: ${error.message}` : 'Theme changed, but could not save the preference.');
+    }
+  };
   const openSheet = (type: string, params?: any) => {
     setSheet({ type, params });
   };
@@ -135,6 +161,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCreatorPackages([]);
     setOffers([]);
     setCart([]);
+    setCartId(null);
     setNotifications([]);
     setUnread(0);
     setCreatorBids([]);
@@ -264,10 +291,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const refreshCart = async () => {
     const items: any[] = [];
+    let nextCartId: string | undefined;
     let cursor: string | undefined;
     do {
       const page = await getCart(cursor);
       items.push(...page.items);
+      nextCartId = page.cartId || nextCartId;
       cursor = page.nextCursor;
     } while (cursor);
     const mapped = items.map((item) => ({
@@ -280,6 +309,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       price: moneyInRupees(item.package?.price ?? item.price),
     }));
     setCart(mapped);
+    setCartId(nextCartId || null);
     return mapped;
   };
   const searchCreators = useCallback((filters: {
@@ -479,10 +509,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await removeCartItem(id);
     setCart((previous) => previous.filter((item) => String(item.id) !== id));
   };
-  const checkout = async (usageRights: string) => {
-    const response = await checkoutCart(usageRights);
-    await Promise.all([refreshCart(), refreshOrders('brand')]);
-    return response;
+  const checkout = async () => {
+    if (!cartId) throw new Error('The server did not return a cart ID. Refresh the cart and try again.');
+    return checkoutCart(cartId);
   };
   const submitDeliverable = async (id: string, contentUrl: string, note: string) => {
     const response = await submitOrderDeliverable(id, contentUrl, note);
@@ -725,6 +754,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCreatorPackages([]);
     setOffers([]);
     setCart([]);
+    setCartId(null);
     reset([{ name: 'Landing' }]);
   };
   const logoutAll = async () => {
@@ -752,6 +782,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCreatorPackages([]);
       setOffers([]);
       setCart([]);
+      setCartId(null);
       reset([{ name: 'Landing' }]);
     }
   };
@@ -844,13 +875,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={{
       loggedIn, login, logout, accountRole, brandName, setBrandName, brandProfile, setBrandProfile,
+      colorScheme, toggleColorScheme,
       creatorProfile, setCreatorProfile: saveCreatorProfile, findCreatorProfile, creatorBids, submitCreatorBid,
       conversations, startConversation, sendMessage, refreshConversations, loadConversationMessages,
       jobs, addJob, updateJob, closeJob, refreshCampaigns, loadCampaignDetail, loadCampaignBids, hireBid, withdrawBid, updateBid,
       creatorSearchResults, searchCreators, loadPublicCreator,
       refreshCreatorBids, creatorPackages, refreshCreatorPackages, createPackage, updatePackage, removePackage,
       offers, refreshOffers, sendOffer, respondOffer, withdrawCreatorOffer,
-      cart, refreshCart, addPackageToCart, removeCartEntry, checkout,
+      cart, cartId, refreshCart, addPackageToCart, removeCartEntry, checkout,
       lists, addList, refreshLists, saved, saveCreator, unsaveCreator,
       loadList, renameList, removeList,
       deliverables, orders, refreshOrders, loadOrderDetails, submitDeliverable, approveOrder, requestRevision,

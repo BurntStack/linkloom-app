@@ -168,10 +168,17 @@ export function pageItems<T>(data: unknown): T[] {
 export async function requestPage<T>(path: string): Promise<ApiPage<T>> {
   const envelope = await requestEnvelope<unknown>(path);
   const data = envelope.data;
+  const dataRecord = data && typeof data === 'object' && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : undefined;
+  const cartId = typeof dataRecord?.cartId === 'string'
+    ? dataRecord.cartId
+    : typeof envelope.meta?.cartId === 'string' ? envelope.meta.cartId : undefined;
   return {
     items: pageItems<T>(data),
     nextCursor: envelope.meta?.nextCursor,
     unreadCount: typeof envelope.meta?.unreadCount === 'number' ? envelope.meta.unreadCount : undefined,
+    cartId,
   };
 }
 

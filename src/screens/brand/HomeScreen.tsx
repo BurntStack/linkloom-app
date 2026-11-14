@@ -54,8 +54,8 @@ export function Home({ navigation }: any) {
   return (
     <Screen navigation={navigation}>
       <View style={{ gap: 7, paddingTop: 1 }}>
-        <T size={11} w="bold" track={0.9} color={C.muted2}>{brandName?.toUpperCase() || 'BRAND WORKSPACE'}</T>
-        <T size={31} w="semi" track={-1} color={C.text} style={{ fontFamily: 'Georgia' }}>
+        <T size={12} w="bold" track={0.9} color={C.muted2}>{brandName?.toUpperCase() || 'BRAND WORKSPACE'}</T>
+        <T size={35} w="bold" track={-1} color={C.text}>
           {greeting}, {brandName}.
         </T>
       </View>
@@ -65,30 +65,30 @@ export function Home({ navigation }: any) {
           <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
             <Row style={{ gap: 9, alignItems: 'center' }}>
               <LogoMark size={24} />
-              <T size={11} w="semi" track={0.8} color={C.onDarkMuted}>CAMPAIGN OVERVIEW</T>
+              <T size={11} w="bold" track={0.8} color={C.onDarkMuted}>CAMPAIGN OVERVIEW</T>
             </Row>
             <Ionicons name="chevron-forward" size={18} color={C.onDarkMuted} />
           </Row>
           <View style={{ gap: 4 }}>
-            <T size={11.5} color={C.onDarkMuted}>Held safely in escrow</T>
-            <T size={34} w="semi" color={C.onDark}>{inr(escrowTotal)}</T>
-            <T size={11.5} color={C.onDarkMuted}>Released only when you approve</T>
+            <T size={12} w="med" color={C.onDarkMuted}>Held safely in escrow</T>
+            <T size={38} w="bold" color={C.onDark}>{inr(escrowTotal)}</T>
+            <T size={12} w="med" color={C.onDarkMuted}>Released only when you approve</T>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <View style={{ flex: 1, padding: 10, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.12)', gap: 3 }}>
-              <T size={16} w="semi" color={C.onDark}>{hiredCount}</T>
-              <T size={10.5} color={C.onDarkMuted}>Creators hired</T>
+              <T size={21} w="bold" color={C.onDark}>{hiredCount}</T>
+              <T size={11} w="semi" color={C.onDarkMuted}>Creators hired</T>
             </View>
             <View style={{ flex: 1, padding: 10, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.12)', gap: 3 }}>
-              <T size={16} w="semi" color={C.onDark}>{activeCampaignCount}</T>
-              <T size={10.5} color={C.onDarkMuted}>Active campaigns</T>
+              <T size={21} w="bold" color={C.onDark}>{activeCampaignCount}</T>
+              <T size={11} w="semi" color={C.onDarkMuted}>Active campaigns</T>
             </View>
           </View>
         </View>
       </Pressable>
 
       <View style={{ gap: 9 }}>
-        <T size={22} w="semi" color={C.text} style={{ fontFamily: 'Georgia' }}>Start here</T>
+        <T size={25} w="bold" color={C.text}>Start here</T>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Pressable
             onPress={() => navigation.navigate('Search')}
@@ -98,8 +98,8 @@ export function Home({ navigation }: any) {
               <Ionicons name="people-outline" size={18} color={C.primary} />
             </View>
             <View style={{ gap: 3 }}>
-              <T size={13} w="semi" color={C.text}>Find creators</T>
-              <T size={10.5} color={C.muted2}>Browse and shortlist</T>
+              <T size={14} w="bold" color={C.text}>Find creators</T>
+              <T size={11.5} w="med" color={C.muted2}>Browse and shortlist</T>
             </View>
           </Pressable>
           <Pressable
@@ -110,8 +110,8 @@ export function Home({ navigation }: any) {
               <Ionicons name="briefcase-outline" size={18} color={C.amber} />
             </View>
             <View style={{ gap: 3 }}>
-              <T size={13} w="semi" color={C.text}>Post a campaign</T>
-              <T size={10.5} color={C.muted2}>Share a brief and budget</T>
+              <T size={14} w="bold" color={C.text}>Post a campaign</T>
+              <T size={11.5} w="med" color={C.muted2}>Share a brief and budget</T>
             </View>
           </Pressable>
         </View>
@@ -119,9 +119,9 @@ export function Home({ navigation }: any) {
 
       <View style={{ gap: 7 }}>
         <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <T size={23} w="semi" color={C.text} style={{ fontFamily: 'Georgia' }}>Needs you</T>
+          <T size={26} w="bold" color={C.text}>Needs you</T>
           <Pressable onPress={() => navigation.navigate('Jobs')} hitSlop={8}>
-            <T size={12} w="semi" color={C.primary}>All campaigns</T>
+            <T size={13} w="bold" color={C.primary}>All campaigns</T>
           </Pressable>
         </Row>
         {needsAttention.length ? needsAttention.map((item) => (
@@ -131,24 +131,24 @@ export function Home({ navigation }: any) {
                 <Ionicons name={item.icon as any} size={19} color={C.text} />
               </View>
               <View style={{ flex: 1, gap: 3 }}>
-                <T size={14} w="semi" color={C.text}>{item.title}</T>
-                <T size={12} color={C.muted2} numberOfLines={1}>{item.subtitle}</T>
+                <T size={15} w="bold" color={C.text}>{item.title}</T>
+                <T size={13} w="med" color={C.muted2} numberOfLines={1}>{item.subtitle}</T>
               </View>
               <Ionicons name="chevron-forward" size={18} color={C.muted2} />
             </Row>
           </Pressable>
         )) : (
           <Card style={{ padding: 15 }}>
-            <T size={13} color={C.muted2}>You’re all caught up. New bids and delivered work will show up here.</T>
+            <T size={14} w="med" color={C.muted2}>You’re all caught up. New bids and delivered work will show up here.</T>
           </Card>
         )}
       </View>
 
       <View style={{ gap: 10 }}>
         <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <T size={23} w="semi" color={C.text} style={{ fontFamily: 'Georgia' }}>Creators for you</T>
+          <T size={26} w="bold" color={C.text}>Creators for you</T>
           <Pressable onPress={() => navigation.navigate('Search')} hitSlop={8}>
-            <T size={13} w="semi" color={C.text}>See all</T>
+            <T size={13} w="bold" color={C.text}>See all</T>
           </Pressable>
         </Row>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>

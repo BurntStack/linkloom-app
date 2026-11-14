@@ -1,7 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
-import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
@@ -15,11 +14,9 @@ import { AppProvider, navRef, useApp } from './src/store';
 import { RootStack } from './src/navigation';
 import { SheetHost } from './src/screens/Sheets';
 import { ToastHost } from './src/components/ui';
-import { C, setColorScheme } from './src/theme';
+import { C } from './src/theme';
 
 export default function App() {
-  const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  setColorScheme(colorScheme);
   const [loaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -32,7 +29,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AppProvider>
-        <AppNavigation colorScheme={colorScheme} />
+        <AppNavigation />
         <SheetHost />
         <ToastHost />
       </AppProvider>
@@ -40,8 +37,8 @@ export default function App() {
   );
 }
 
-function AppNavigation({ colorScheme }: { colorScheme: 'dark' | 'light' }) {
-  const { restoreSession } = useApp();
+function AppNavigation() {
+  const { restoreSession, colorScheme } = useApp();
   return (
     <NavigationContainer
       ref={navRef}

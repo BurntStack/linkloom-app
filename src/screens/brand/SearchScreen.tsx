@@ -72,7 +72,7 @@ export function Search({ navigation }: any) {
   return (
     <Screen navigation={navigation}>
       <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <T size={30} w="semi" track={-0.8} color={C.text} style={{ fontFamily: 'Georgia' }}>Find creators</T>
+        <T size={30} w="semi" track={-0.8} color={C.text}>Find creators</T>
         <Row style={{ gap: 10 }}>
           <Pressable onPress={() => navigation.navigate('Lists')} accessibilityLabel="Open favourites" style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="heart-outline" size={22} color={C.text} />
@@ -213,7 +213,7 @@ export function Search({ navigation }: any) {
               <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border2 }} />
             </View>
             <Row style={{ justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: C.borderSubtle }}>
-              <T size={23} w="semi" color={C.text} style={{ fontFamily: 'Georgia' }}>Filters</T>
+              <T size={23} w="semi" color={C.text}>Filters</T>
               <Pressable onPress={clearFilters} hitSlop={8}><T size={13} w="semi" color={C.text}>Reset</T></Pressable>
             </Row>
             <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingVertical: 18, gap: 22 }} keyboardShouldPersistTaps="handled">

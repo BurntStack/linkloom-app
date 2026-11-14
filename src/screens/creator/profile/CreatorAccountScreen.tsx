@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Avatar, Btn, Card, Heading, Row, StackHeader, T } from '../../../components/ui';
+import { AppearanceToggle, Avatar, Btn, Card, Heading, Row, StackHeader, T } from '../../../components/ui';
 import { C } from '../../../theme';
 import { useApp } from '../../../store';
 import { Info } from '../shared';
@@ -55,6 +55,7 @@ export function CreatorAccount({ navigation }: any) {
             </View>
           </Row>
         </Card>
+        <AppearanceToggle />
         <Heading title="Creator profile" sub="This information helps brands understand your work and content." />
         <Card style={{ gap: 11 }}>
           <Info label="Categories" value={creatorProfile?.categories?.join(', ') || 'Not added'} />

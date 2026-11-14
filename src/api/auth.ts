@@ -6,7 +6,7 @@ export async function requestAuthOtp(input: {
   channel: AuthChannel;
   destination: string;
 }) {
-  return request<{ challengeId: string }>('/v1/auth/otp/request/', {
+  return request<{ challengeId: string; expiresIn: number }>('/v1/auth/otp/request/', {
     method: 'POST',
     body: JSON.stringify(input),
   }, false);

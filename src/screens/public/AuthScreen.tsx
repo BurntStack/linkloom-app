@@ -9,21 +9,21 @@ import {
   ApiError,
   clearAuthTokens,
   completeSignup,
+  loginWithGoogle,
   loginWithPassword,
   requestAuthOtp,
   verifyOtp as verifyOtpRequest,
-  type AuthChannel,
 } from '../../api';
+
+const GOOGLE_WEB_CLIENT_ID = '591280470035-mamos86blk66gpr7bufpv48ln9dntsef.apps.googleusercontent.com';
 
 export function Auth({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { login, showToast, loadBrandProfile, loadCreatorProfile, initializeWorkspace } = useApp();
   const [mode, setMode] = useState<'login' | 'signup'>(route.params?.mode || 'login');
   const [role, setRole] = useState<'brand' | 'creator'>(route.params?.role === 'creator' ? 'creator' : 'brand');
-  const [identifier, setIdentifier] = useState('');
-  const channel: AuthChannel = identifier.includes('@') ? 'email' : 'sms';
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -32,6 +32,18 @@ export function Auth({ navigation, route }: any) {
   const [challengeId, setChallengeId] = useState('');
   const [verifiedUser, setVerifiedUser] = useState<any>(null);
   const roleAccent = role === 'creator' ? C.creatorAccent : C.brandAccent;
+  const getDestination = () => email.trim();
+  const validateEmail = (destination: string) => {
+    if (!destination) {
+      showToast('Enter your email address.');
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destination)) {
+      showToast('Enter a valid email address.');
+      return false;
+    }
+    return true;
+  };
 
   const continueWithUser = async (user: any) => {
     const actualRole = user.role === 'creator' ? 'creator' : user.role === 'brand' ? 'brand' : role;
@@ -47,7 +59,7 @@ export function Auth({ navigation, route }: any) {
               name: 'CreatorSetup',
               params: {
                 initialName: user.fullName || user.full_name || '',
-                phone: user.phone || user.mobile || (channel === 'sms' ? identifier.trim() : ''),
+                phone: user.phone || user.mobile || '',
                 user,
               },
             }
@@ -68,7 +80,7 @@ export function Auth({ navigation, route }: any) {
               name: 'CreatorSetup',
               params: {
                 initialName: user.fullName || user.full_name || '',
-                phone: user.phone || user.mobile || (channel === 'sms' ? identifier.trim() : ''),
+                phone: user.phone || user.mobile || '',
                 user,
               },
             }
@@ -79,8 +91,8 @@ export function Auth({ navigation, route }: any) {
 
   const signInWithPassword = async () => {
     if (submitting) return;
-    const destination = identifier.trim();
-    if (!destination) return showToast('Enter your email address or mobile number.');
+    const destination = getDestination();
+    if (!validateEmail(destination)) return;
     if (!password) return showToast('Enter your password.');
     setSubmitting(true);
     try {
@@ -93,21 +105,39 @@ export function Auth({ navigation, route }: any) {
     }
   };
 
-  const requestCode = async () => {
+  const signInWithGoogle = async () => {
     if (submitting) return;
-    const destination = identifier.trim();
-    if (!destination) return showToast(channel === 'email' ? 'Enter your email address.' : 'Enter your mobile number.');
-    if (channel === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destination)) {
-      return showToast('Enter a valid email address.');
-    }
     setSubmitting(true);
     try {
-      const response = await requestAuthOtp({ channel, destination });
+      const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+      GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const response = await GoogleSignin.signIn();
+      if (response.type === 'cancelled') return;
+      if (response.type !== 'success') throw new Error('Google sign-in did not complete.');
+      if (!response.data.idToken) throw new Error('Google did not return an ID token. Check the Web OAuth client configuration.');
+      const session = await loginWithGoogle(response.data.idToken, role);
+      await continueWithUser(session.user);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to sign in with Google.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const requestCode = async () => {
+    if (submitting) return;
+    const destination = getDestination();
+    if (!validateEmail(destination)) return;
+    if (password.length < 8) return showToast('Choose a password with at least 8 characters.');
+    setSubmitting(true);
+    try {
+      const response = await requestAuthOtp({ channel: 'email', destination });
       if (!response?.challengeId) throw new Error('The server did not return an OTP challenge. Please try again.');
       setChallengeId(response.challengeId);
       setStep('verify');
       setOtp('');
-      showToast(`Verification code sent by ${channel === 'email' ? 'email' : 'SMS'}.`);
+      showToast('Verification code sent by email.');
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Unable to continue.');
     } finally {
@@ -118,7 +148,7 @@ export function Auth({ navigation, route }: any) {
   const verifyOtp = async () => {
     if (submitting) return;
     if (!challengeId || !otp.trim()) {
-      return showToast(`Enter the verification code sent by ${channel === 'email' ? 'email' : 'SMS'}.`);
+      return showToast('Enter the verification code sent by email.');
     }
     setSubmitting(true);
     try {
@@ -142,17 +172,19 @@ export function Auth({ navigation, route }: any) {
     if (!verifiedUser) return showToast('Verify your account before continuing.');
     if (name.trim().length < 2) return showToast('Enter your full name.');
     if (role === 'brand' && !companyName.trim()) return showToast('Enter your brand or company name.');
-    if (password.length < 8) return showToast('Choose a password with at least 8 characters.');
-    if (password !== confirmPassword) return showToast('Your passwords do not match.');
     setSubmitting(true);
     try {
-      await completeSignup({
+      const response = await completeSignup({
         role,
         fullName: name.trim(),
         ...(role === 'brand' ? { brandName: companyName.trim() } : { displayName: name.trim() }),
         password,
-        confirmPassword,
+        confirmPassword: password,
       });
+      const responseUser = response?.user || response;
+      const user = responseUser && typeof responseUser === 'object'
+        ? { ...verifiedUser, ...responseUser }
+        : verifiedUser;
       navigation.reset({
         index: 0,
         routes: [role === 'creator'
@@ -160,11 +192,11 @@ export function Auth({ navigation, route }: any) {
               name: 'CreatorSetup',
               params: {
                 initialName: name.trim(),
-                phone: channel === 'sms' ? identifier.trim() : verifiedUser.phone || verifiedUser.mobile || '',
-                user: verifiedUser,
+                phone: user.phone || user.mobile || '',
+                user,
               },
             }
-          : { name: 'Onboarding', params: { user: verifiedUser } }],
+          : { name: 'Onboarding', params: { user } }],
       });
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Unable to complete signup.');
@@ -175,15 +207,15 @@ export function Auth({ navigation, route }: any) {
 
   const resendOtp = async () => {
     if (submitting) return;
-    const destination = identifier.trim();
-    if (!destination) return showToast('Enter your email address or mobile number first.');
+    const destination = getDestination();
+    if (!validateEmail(destination)) return;
     setSubmitting(true);
     try {
-      const response = await requestAuthOtp({ channel, destination });
+      const response = await requestAuthOtp({ channel: 'email', destination });
       if (!response?.challengeId) throw new Error('The server did not return an OTP challenge.');
       setChallengeId(response.challengeId);
       setOtp('');
-      showToast(`A new verification code was sent by ${channel === 'email' ? 'email' : 'SMS'}.`);
+      showToast('A new verification code was sent by email.');
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Unable to resend the code.');
     } finally {
@@ -218,12 +250,12 @@ export function Auth({ navigation, route }: any) {
         <View style={{ gap: 7 }}>
           <T size={10} w="semi" color={C.muted}>STEP {step === 'credentials' ? '1' : step === 'verify' ? '2' : '3'} OF 3</T>
           <Row style={{ gap: 4 }}>
-            {['Contact', 'Verify', 'Profile'].map((label, index) => {
+            {['Email', 'Verify', 'Profile'].map((label, index) => {
               const activeIndex = step === 'credentials' ? 0 : step === 'verify' ? 1 : 2;
               return (
                 <View key={label} style={{ flex: 1, gap: 5 }}>
                   <View style={{ height: 3, borderRadius: 2, backgroundColor: index <= activeIndex ? roleAccent : C.border }} />
-                  <T size={9} color={index <= activeIndex ? C.text : C.muted3}>{label}</T>
+                  <T size={9} w="med" color={index <= activeIndex ? C.text : C.muted3}>{label}</T>
                 </View>
               );
             })}
@@ -232,14 +264,16 @@ export function Auth({ navigation, route }: any) {
       ) : null}
 
       <View style={{ gap: 5 }}>
-        <T size={25} w="semi" track={-0.7} color={C.text}>
-          {step === 'verify' ? 'Check your inbox' : step === 'details' ? 'Tell us who you are' : mode === 'signup' ? 'Create account' : 'Welcome back'}
-        </T>
-        <T size={12} color={C.muted} style={{ lineHeight: 18 }}>
+        <T size={28} w="bold" track={-0.7} color={C.text}>
           {step === 'verify'
-            ? `We sent a one-time code to ${identifier.trim()}.`
+            ? 'Check your inbox'
+            : step === 'details' ? 'Tell us who you are' : mode === 'signup' ? 'Create account' : 'Welcome back'}
+        </T>
+        <T size={12} w="med" color={C.muted} style={{ lineHeight: 18 }}>
+          {step === 'verify'
+            ? `We sent a one-time code to ${getDestination()}.`
             : step === 'details'
-              ? `Your ${channel === 'email' ? 'email' : 'mobile number'} is verified. Complete your profile to continue.`
+              ? 'Your email is verified. Complete your profile to continue.'
               : mode === 'signup'
                 ? 'Create your Linkloom account to get started.'
                 : 'Sign in to your Linkloom account.'}
@@ -251,9 +285,9 @@ export function Auth({ navigation, route }: any) {
           <Field
             label="6-digit code"
             value={otp}
-            onChangeText={setOtp}
+            onChangeText={(value) => setOtp(value.replace(/\D/g, '').slice(0, 6))}
             placeholder="Enter verification code"
-            keyboardType={channel === 'sms' ? 'number-pad' : 'default'}
+            keyboardType="number-pad"
             maxLength={6}
           />
           <Btn
@@ -270,7 +304,7 @@ export function Auth({ navigation, route }: any) {
             setChallengeId('');
             setOtp('');
           }} style={{ alignSelf: 'center', padding: 4 }}>
-            <T size={11} color={C.muted}>Change email or mobile number</T>
+            <T size={11} w="med" color={C.muted}>Change email address</T>
           </Pressable>
         </View>
       ) : step === 'details' ? (
@@ -279,8 +313,6 @@ export function Auth({ navigation, route }: any) {
           {role === 'brand' ? (
             <Field label="Brand name" value={companyName} onChangeText={setCompanyName} placeholder="e.g. Salt & Soil Foods" />
           ) : null}
-          <Field label="Password" value={password} onChangeText={setPassword} placeholder="At least 8 characters" secure />
-          <Field label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Enter your password again" secure />
           <Btn
             label={submitting ? 'Creating account…' : 'Continue'}
             onPress={completeSignupDetails}
@@ -313,33 +345,50 @@ export function Auth({ navigation, route }: any) {
           </Row>
 
           <Field
-            label="Email or mobile number"
-            value={identifier}
-            onChangeText={setIdentifier}
-            placeholder="you@example.com or +91 98765 43210"
-            keyboardType="default"
+            label="Email address"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            keyboardType="email-address"
           />
-          {mode === 'login' ? (
-            <Field label="Password" value={password} onChangeText={setPassword} placeholder="Enter your password" secure />
-          ) : null}
+          <Field
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder={mode === 'signup' ? 'At least 8 characters' : 'Enter your password'}
+            secure
+          />
           <Btn
             label={submitting ? 'Please wait…' : mode === 'signup' ? 'Send verification code' : 'Sign in'}
             onPress={mode === 'signup' ? requestCode : signInWithPassword}
             loading={submitting}
             style={{ minHeight: 48 }}
           />
-          <T size={10} color={C.muted} style={{ lineHeight: 15 }}>
+          <T size={10} w="med" color={C.muted} style={{ lineHeight: 15 }}>
             {mode === 'signup'
-              ? 'We’ll send a one-time verification code to your email or mobile number.'
-              : 'Sign in with the password associated with your email or mobile number.'}
+              ? 'We’ll email you a one-time verification code.'
+              : 'Sign in with the password associated with your email address.'}
           </T>
+          <Row style={{ gap: 10, alignItems: 'center' }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+            <T size={10} w="med" color={C.muted}>OR</T>
+            <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+          </Row>
+          <Btn
+            label={submitting ? 'Please wait…' : 'Continue with Google'}
+            onPress={signInWithGoogle}
+            variant="outline"
+            icon="logo-google"
+            loading={submitting}
+            style={{ minHeight: 48 }}
+          />
         </>
       )}
 
       {step === 'credentials' ? (
         <View style={{ gap: 12 }}>
           {mode === 'signup' ? (
-            <T size={10} color={C.muted} style={{ textAlign: 'center', lineHeight: 15 }}>
+            <T size={10} w="med" color={C.muted} style={{ textAlign: 'center', lineHeight: 15 }}>
               By continuing, you agree to Linkloom’s Terms of Service and Privacy Policy.
             </T>
           ) : null}
@@ -347,13 +396,14 @@ export function Auth({ navigation, route }: any) {
             onPress={() => {
               setMode(mode === 'signup' ? 'login' : 'signup');
               setStep('credentials');
+              setPassword('');
               setChallengeId('');
               setOtp('');
               setVerifiedUser(null);
             }}
             style={{ alignSelf: 'center', paddingVertical: 5 }}
           >
-            <T size={11} color={C.muted}>
+            <T size={11} w="med" color={C.muted}>
               {mode === 'signup' ? 'Have an account? ' : 'New to Linkloom? '}
               <T size={11} w="bold" color={C.text}>{mode === 'signup' ? 'Sign in' : 'Create account'}</T>
             </T>

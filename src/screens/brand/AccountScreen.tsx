@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C } from '../../theme';
 import { useApp } from '../../store';
-import { Btn, Card, Row, T } from '../../components/ui';
+import { AppearanceToggle, Btn, Card, Row, T } from '../../components/ui';
 import { EmailVerification } from '../../components/ui/EmailVerification';
 
 import { Screen } from './shared';
@@ -82,10 +82,10 @@ export function AccountSettings({ navigation }: any) {
             end={{ x: 1, y: 1 }}
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
           >
-            <T size={35} w="semi" color={C.onPrimary} style={{ fontFamily: 'Georgia' }}>{initials}</T>
+            <T size={35} w="semi" color={C.onPrimary}>{initials}</T>
           </LinearGradient>
         </View>
-        <T size={26} w="semi" track={-0.7} color={C.text} style={{ fontFamily: 'Georgia', textAlign: 'center' }}>
+        <T size={26} w="semi" track={-0.7} color={C.text} style={{ textAlign: 'center' }}>
           {brandName || 'Brand profile'}
         </T>
         {brandProfile?.businessCategory ? <T size={13} color={C.muted2}>{brandProfile.businessCategory}</T> : null}
@@ -102,6 +102,8 @@ export function AccountSettings({ navigation }: any) {
           </Pressable>
         </Row>
       </View>
+
+      <AppearanceToggle />
 
       <View style={{ gap: 4 }}>
         <T size={11} w="bold" color={C.muted2} track={0.8} style={{ paddingHorizontal: 2 }}>BRAND PROFILE</T>

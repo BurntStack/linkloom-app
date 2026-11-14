@@ -62,7 +62,7 @@ export function ReviewBids({ jobId }: { jobId: string }) {
       {compareOpen ? (
         <View style={{ gap: 13 }}>
           <View style={{ gap: 3 }}>
-            <T size={24} w="semi" color={C.text} style={{ fontFamily: 'Georgia' }}>Compare bids</T>
+            <T size={24} w="semi" color={C.text}>Compare bids</T>
             <T size={12} color={C.muted2}>{job.title} · budget {inr(job.max)}</T>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
