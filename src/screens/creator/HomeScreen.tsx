@@ -36,11 +36,11 @@ export function CreatorHome({ navigation }: any) {
     <Page navigation={navigation} header={<CreatorHeader navigation={navigation} />}>
       <View style={{ gap: 6, paddingTop: 1 }}>
         <T size={11} w="semi" track={1.1} color={C.muted}>{formatHomeDate(now)}</T>
-        <T size={32} w="semi" track={-1} color={C.text}>{greetingForHour(now.getHours())}, {name.split(' ')[0]}.</T>
+        <T size={32} w="semi" track={-1} color={C.text} accessibilityRole="header">{greetingForHour(now.getHours())}, {name.split(' ')[0]}.</T>
       </View>
 
       <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 3 }}>
-        <T size={22} w="semi" track={-0.6} color={C.text}>Needs you</T>
+        <T size={22} w="semi" track={-0.6} color={C.text} accessibilityRole="header">Needs you</T>
         <T size={12} w="semi" color={C.muted}>{activeOrders.length}</T>
       </Row>
       {activeOrders.length ? (
@@ -79,28 +79,22 @@ export function CreatorHome({ navigation }: any) {
         ))}
       </View>
 
-      <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
-        <T size={22} w="semi" track={-0.6} color={C.text}>Money</T>
-        <Pressable onPress={() => navigation.navigate('CreatorMain', { screen: 'Earnings' })}>
-          <T size={12} w="semi" color={C.text}>Earnings</T>
-        </Pressable>
-      </Row>
-      <View style={{ flexDirection: 'row', backgroundColor: C.surface, borderRadius: 18, borderWidth: 1, borderColor: C.border, overflow: 'hidden' }}>
-        <MoneyMetric label="Ready" amount={earned} note="Released" />
-        <MoneyMetric label="Clearing" amount={clearing} note="In progress" />
-        <MoneyMetric label="Escrow" amount={escrow} note={`${activeOrders.length} active jobs`} accent />
-      </View>
-
       <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 5 }}>
-        <T size={22} w="semi" track={-0.6} color={C.text}>Coming up</T>
-        <Pressable onPress={() => navigation.navigate('CreatorMain', { screen: 'ActiveJobs' })}>
+        <T size={22} w="semi" track={-0.6} color={C.text} accessibilityRole="header">Upcoming deadlines</T>
+        <Pressable onPress={() => navigation.navigate('CreatorMain', { screen: 'ActiveJobs' })} accessibilityRole="button">
           <T size={12} w="semi" color={C.text}>Active jobs</T>
         </Pressable>
       </Row>
       {activeOrders.length ? activeOrders.slice(0, 3).map((order: any) => {
         const due = dueDateParts(order.draftDue);
         return (
-          <Pressable key={order.id} onPress={() => openSheet('order', { orderId: order.id })} style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: C.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Pressable
+            key={order.id}
+            onPress={() => openSheet('order', { orderId: order.id })}
+            accessibilityRole="button"
+            accessibilityLabel={`${order.stage === 'delivered' ? 'Brand approval due' : 'Active job'}: ${order.title}, ${due.day} ${due.month}, ${inr(order.fee || 0)}`}
+            style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: C.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+          >
             <View style={{ width: 42, alignItems: 'center' }}>
               <T size={19} w="semi" color={C.text}>{due.day}</T>
               <T size={9} w="semi" color={C.muted}>{due.month}</T>
@@ -115,12 +109,12 @@ export function CreatorHome({ navigation }: any) {
           </Pressable>
         );
       }) : (
-        <T size={12} color={C.muted}>{loadingCampaigns ? 'Loading active jobs…' : 'Your upcoming job deadlines will show here.'}</T>
+        <T size={12} color={C.muted}>{loadingCampaigns ? 'Loading your active work…' : 'Your upcoming job deadlines will show here.'}</T>
       )}
 
       <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 7 }}>
-        <T size={22} w="semi" track={-0.6} color={C.text}>Picked for you</T>
-        <Pressable onPress={() => navigation.navigate('FindJobs')}>
+        <T size={22} w="semi" track={-0.6} color={C.text} accessibilityRole="header">Open campaigns</T>
+        <Pressable onPress={() => navigation.navigate('FindJobs')} accessibilityRole="button">
           <T size={12} w="semi" color={C.text}>See all</T>
         </Pressable>
       </Row>
@@ -129,6 +123,19 @@ export function CreatorHome({ navigation }: any) {
       )) : (
         <Card><T size={12} color={C.muted}>{loadingCampaigns ? 'Loading brand campaigns…' : 'No open campaigns are available right now.'}</T></Card>
       )}
+
+      <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
+        <T size={22} w="semi" track={-0.6} color={C.text} accessibilityRole="header">Earnings &amp; escrow</T>
+        <Pressable onPress={() => navigation.navigate('CreatorMain', { screen: 'Earnings' })} accessibilityRole="button">
+          <T size={12} w="semi" color={C.text}>Earnings</T>
+        </Pressable>
+      </Row>
+      <View style={{ flexDirection: 'row', backgroundColor: C.surface, borderRadius: 18, borderWidth: 1, borderColor: C.border, overflow: 'hidden' }}>
+        <MoneyMetric label="Ready" amount={earned} note="Released" />
+        <MoneyMetric label="Clearing" amount={clearing} note="In progress" />
+        <MoneyMetric label="Escrow" amount={escrow} note={`${activeOrders.length} active jobs`} accent />
+      </View>
+
       <T size={11} color={C.muted} style={{ textAlign: 'center', paddingVertical: 6 }}>Creator plan · no fee on any deal</T>
       <Btn label={`View offers${myBids.length ? ` · ${myBids.length} bids` : ''}`} icon="mail-outline" onPress={() => navigation.navigate('Offers')} variant="outline" />
     </Page>

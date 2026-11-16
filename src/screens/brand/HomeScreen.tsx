@@ -50,17 +50,85 @@ export function Home({ navigation }: any) {
   );
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const displayBrandName = brandName?.trim() || 'Brand';
 
   return (
     <Screen navigation={navigation}>
       <View style={{ gap: 7, paddingTop: 1 }}>
-        <T size={12} w="bold" track={0.9} color={C.muted2}>{brandName?.toUpperCase() || 'BRAND WORKSPACE'}</T>
-        <T size={35} w="bold" track={-1} color={C.text}>
-          {greeting}, {brandName}.
+        <T size={12} w="bold" track={0.9} color={C.muted2}>{brandName?.trim().toUpperCase() || 'BRAND WORKSPACE'}</T>
+        <T size={35} w="bold" track={-1} color={C.text} accessibilityRole="header">
+          {greeting}, {displayBrandName}.
         </T>
       </View>
 
-      <Pressable onPress={() => navigation.navigate('Orders')} accessibilityRole="button">
+      <View style={{ gap: 7 }}>
+        <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <T size={26} w="bold" color={C.text} accessibilityRole="header">Needs you</T>
+          <Pressable onPress={() => navigation.navigate('Jobs')} hitSlop={8} accessibilityRole="button">
+            <T size={13} w="bold" color={C.primary}>All campaigns</T>
+          </Pressable>
+        </Row>
+        {needsAttention.length ? needsAttention.map((item) => (
+          <Pressable
+            key={item.id}
+            onPress={item.action}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.title}. ${item.subtitle}`}
+            style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borderSubtle }}
+          >
+            <Row style={{ gap: 12, alignItems: 'center' }}>
+              <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: C.surfaceSoft, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={item.icon as any} size={19} color={C.text} />
+              </View>
+              <View style={{ flex: 1, gap: 3 }}>
+                <T size={15} w="bold" color={C.text}>{item.title}</T>
+                <T size={13} w="med" color={C.muted2} numberOfLines={1}>{item.subtitle}</T>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={C.muted2} />
+            </Row>
+          </Pressable>
+        )) : (
+          <Card style={{ padding: 15 }}>
+            <T size={14} w="med" color={C.muted2}>You’re all caught up. New bids and delivered work will show up here.</T>
+          </Card>
+        )}
+      </View>
+
+      <View style={{ gap: 9 }}>
+        <T size={25} w="bold" color={C.text} accessibilityRole="header">Quick actions</T>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Pressable
+            onPress={() => openSheet('postjob')}
+            accessibilityRole="button"
+            accessibilityLabel="Post a campaign brief"
+            style={{ flex: 1, minHeight: 112, padding: 13, borderRadius: 18, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, justifyContent: 'space-between' }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.amberBg, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="briefcase-outline" size={18} color={C.amber} />
+            </View>
+            <View style={{ gap: 3 }}>
+              <T size={14} w="bold" color={C.text}>Post a campaign</T>
+              <T size={11.5} w="med" color={C.muted2}>Share a brief and budget</T>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('Search')}
+            accessibilityRole="button"
+            accessibilityLabel="Find and shortlist creators"
+            style={{ flex: 1, minHeight: 112, padding: 13, borderRadius: 18, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, justifyContent: 'space-between' }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="people-outline" size={18} color={C.primary} />
+            </View>
+            <View style={{ gap: 3 }}>
+              <T size={14} w="bold" color={C.text}>Find creators</T>
+              <T size={11.5} w="med" color={C.muted2}>Browse and shortlist</T>
+            </View>
+          </Pressable>
+        </View>
+      </View>
+
+      <Pressable onPress={() => navigation.navigate('Orders')} accessibilityRole="button" accessibilityLabel="View campaign and payment overview">
         <View style={{ padding: 18, borderRadius: 22, backgroundColor: C.dark, gap: 17 }}>
           <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
             <Row style={{ gap: 9, alignItems: 'center' }}>
@@ -87,67 +155,10 @@ export function Home({ navigation }: any) {
         </View>
       </Pressable>
 
-      <View style={{ gap: 9 }}>
-        <T size={25} w="bold" color={C.text}>Start here</T>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Pressable
-            onPress={() => navigation.navigate('Search')}
-            style={{ flex: 1, minHeight: 112, padding: 13, borderRadius: 18, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, justifyContent: 'space-between' }}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="people-outline" size={18} color={C.primary} />
-            </View>
-            <View style={{ gap: 3 }}>
-              <T size={14} w="bold" color={C.text}>Find creators</T>
-              <T size={11.5} w="med" color={C.muted2}>Browse and shortlist</T>
-            </View>
-          </Pressable>
-          <Pressable
-            onPress={() => openSheet('postjob')}
-            style={{ flex: 1, minHeight: 112, padding: 13, borderRadius: 18, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, justifyContent: 'space-between' }}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.amberBg, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="briefcase-outline" size={18} color={C.amber} />
-            </View>
-            <View style={{ gap: 3 }}>
-              <T size={14} w="bold" color={C.text}>Post a campaign</T>
-              <T size={11.5} w="med" color={C.muted2}>Share a brief and budget</T>
-            </View>
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={{ gap: 7 }}>
-        <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <T size={26} w="bold" color={C.text}>Needs you</T>
-          <Pressable onPress={() => navigation.navigate('Jobs')} hitSlop={8}>
-            <T size={13} w="bold" color={C.primary}>All campaigns</T>
-          </Pressable>
-        </Row>
-        {needsAttention.length ? needsAttention.map((item) => (
-          <Pressable key={item.id} onPress={item.action} style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borderSubtle }}>
-            <Row style={{ gap: 12, alignItems: 'center' }}>
-              <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: C.surfaceSoft, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={item.icon as any} size={19} color={C.text} />
-              </View>
-              <View style={{ flex: 1, gap: 3 }}>
-                <T size={15} w="bold" color={C.text}>{item.title}</T>
-                <T size={13} w="med" color={C.muted2} numberOfLines={1}>{item.subtitle}</T>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={C.muted2} />
-            </Row>
-          </Pressable>
-        )) : (
-          <Card style={{ padding: 15 }}>
-            <T size={14} w="med" color={C.muted2}>You’re all caught up. New bids and delivered work will show up here.</T>
-          </Card>
-        )}
-      </View>
-
       <View style={{ gap: 10 }}>
         <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <T size={26} w="bold" color={C.text}>Creators for you</T>
-          <Pressable onPress={() => navigation.navigate('Search')} hitSlop={8}>
+          <T size={26} w="bold" color={C.text} accessibilityRole="header">Creators to consider</T>
+          <Pressable onPress={() => navigation.navigate('Search')} hitSlop={8} accessibilityRole="button" accessibilityLabel="See all creators">
             <T size={13} w="bold" color={C.text}>See all</T>
           </Pressable>
         </Row>
