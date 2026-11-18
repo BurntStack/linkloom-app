@@ -4,10 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppearanceToggle, Avatar, Btn, Card, Heading, Row, StackHeader, T } from '../../../components/ui';
 import { C } from '../../../theme';
 import { useApp } from '../../../store';
+import { KycProfileCard } from '../../sheets/KycSheet';
 import { Info } from '../shared';
 
 export function CreatorAccount({ navigation }: any) {
-  const { creatorProfile, orders } = useApp();
+  const { creatorProfile, orders, kycStatus, kycLoading, openKyc } = useApp();
   const releasedOrders = orders.filter((order: any) => order.stage === 'released').length;
 
   return (
@@ -29,9 +30,20 @@ export function CreatorAccount({ navigation }: any) {
       />
       <ScrollView contentContainerStyle={{ padding: 18, gap: 14, paddingBottom: 30 }}>
         <Card style={{ alignItems: 'center', gap: 10 }}>
-          <Avatar name={creatorProfile?.name || 'Creator'} size={82} photo={creatorProfile?.photoUrl ? { uri: creatorProfile.photoUrl } : undefined} />
+          <Avatar
+            name={creatorProfile?.name || 'Creator'}
+            size={82}
+            photo={creatorProfile?.photoUrl ? { uri: creatorProfile.photoUrl } : undefined}
+            verified={kycStatus?.status === 'verified'}
+          />
           <View style={{ alignItems: 'center', gap: 4 }}>
             <T size={21} w="bold" color={C.text}>{creatorProfile?.name || 'Creator profile'}</T>
+            {kycStatus?.status === 'verified' ? (
+              <Row style={{ alignItems: 'center', gap: 4 }}>
+                <Ionicons name="checkmark-circle" size={14} color={C.green} />
+                <T size={11} w="semi" color={C.green}>Verified creator</T>
+              </Row>
+            ) : null}
             <Row style={{ alignItems: 'center', gap: 5 }}>
               <Ionicons name="location-outline" size={14} color={C.muted} />
               <T size={12} color={C.muted}>{creatorProfile?.city || 'Add your city'}</T>
@@ -56,6 +68,7 @@ export function CreatorAccount({ navigation }: any) {
           </Row>
         </Card>
         <AppearanceToggle />
+        <KycProfileCard submission={kycStatus} loading={kycLoading} onPress={openKyc} />
         <Heading title="Creator profile" sub="This information helps brands understand your work and content." />
         <Card style={{ gap: 11 }}>
           <Info label="Categories" value={creatorProfile?.categories?.join(', ') || 'Not added'} />

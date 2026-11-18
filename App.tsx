@@ -13,6 +13,7 @@ import {
 import { AppProvider, navRef, useApp } from './src/store';
 import { RootStack } from './src/navigation';
 import { SheetHost } from './src/screens/Sheets';
+import { KycSheetHost } from './src/screens/sheets/KycSheet';
 import { ToastHost } from './src/components/ui';
 import { C } from './src/theme';
 
@@ -31,6 +32,7 @@ export default function App() {
       <AppProvider>
         <AppNavigation />
         <SheetHost />
+        <KycSheetHost />
         <ToastHost />
       </AppProvider>
     </SafeAreaProvider>

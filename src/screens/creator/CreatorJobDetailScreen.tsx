@@ -35,7 +35,7 @@ function usageRightsLabel(value: Job['usageRights']) {
 }
 
 export function CreatorJobDetail({ navigation, route }: any) {
-  const { jobs } = useApp();
+  const { jobs, kycStatus, openKyc } = useApp();
   const sourceJob = jobs.find((item: Job) => item.id === route.params?.jobId);
   const job = sourceJob ? toCreatorJob(sourceJob) : undefined;
   if (!job) {
@@ -48,6 +48,13 @@ export function CreatorJobDetail({ navigation, route }: any) {
   }
 
   const deliverables = job.deliverables.split(/\n+/).map((item) => item.trim()).filter(Boolean);
+  const startBid = () => {
+    if (kycStatus?.status !== 'verified') {
+      openKyc();
+      return;
+    }
+    navigation.navigate('CreatorBidForm', { jobId: job.id });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -113,7 +120,7 @@ export function CreatorJobDetail({ navigation, route }: any) {
 
       <View style={{ paddingHorizontal: 18, paddingTop: 12, paddingBottom: 12, backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.border, gap: 10 }}>
         <T size={12} color={C.muted}>You keep the full price · no platform fee</T>
-        <Btn label="Bid on this job" onPress={() => navigation.navigate('CreatorBidForm', { jobId: job.id })} style={{ minHeight: 52, borderRadius: 28 }} />
+        <Btn label="Bid on this job" onPress={startBid} style={{ minHeight: 52, borderRadius: 28 }} />
       </View>
     </View>
   );

@@ -17,3 +17,4 @@ export type Conversation = {
   jobTitle?: string;
   messages: ChatMessage[];
 };
+

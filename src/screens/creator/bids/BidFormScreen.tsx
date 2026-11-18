@@ -85,7 +85,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 }
 
 export function CreatorBidForm({ navigation, route }: any) {
-  const { submitCreatorBid, showToast, jobs } = useApp();
+  const { submitCreatorBid, showToast, jobs, kycStatus, openKyc } = useApp();
   const sourceJob = jobs.find((item: Job) => item.id === route.params?.jobId && item.status === 'open');
   const job = sourceJob ? toCreatorJob(sourceJob) : undefined;
   const [price, setPrice] = useState('');
@@ -122,11 +122,7 @@ export function CreatorBidForm({ navigation, route }: any) {
     if (validate()) setReviewVisible(true);
   };
 
-  const send = async () => {
-    if (!validate()) {
-      setReviewVisible(false);
-      return;
-    }
+  const sendBid = async () => {
     setSaving(true);
     try {
       await submitCreatorBid({
@@ -147,6 +143,19 @@ export function CreatorBidForm({ navigation, route }: any) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const send = async () => {
+    if (!validate()) {
+      setReviewVisible(false);
+      return;
+    }
+    if (kycStatus?.status !== 'verified') {
+      setReviewVisible(false);
+      openKyc();
+      return;
+    }
+    await sendBid();
   };
 
   const budgetPresets = [...new Set([job.minBudget, Math.round((job.minBudget + job.maxBudget) / 2), job.maxBudget])];

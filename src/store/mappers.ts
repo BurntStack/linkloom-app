@@ -174,6 +174,7 @@ export function mapPublicCreator(source: any): Creator {
     platform: String(primaryPlatform),
     rating: Number(profile.rating ?? profile.averageRating ?? profile.average_rating ?? 0),
     price: moneyInRupees(packagePrice),
+    verified: profile.verified === true || profile.isVerified === true || profile.is_verified === true,
     bio: profile.bio || '',
     reach: String(profile.reach ?? ''),
     eng: String(profile.engagementRate ?? profile.engagement_rate ?? ''),

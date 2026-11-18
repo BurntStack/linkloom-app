@@ -1,5 +1,17 @@
 export type AuthRole = 'brand' | 'creator';
 export type AuthChannel = 'email';
+export type KycStatus = 'not_started' | 'in_progress' | 'pending' | 'verified' | 'rejected';
+export type KycStepProgress = {
+  completed: boolean;
+  maskedValue?: string;
+};
+export type KycStatusSnapshot = {
+  status: KycStatus;
+  pan: KycStepProgress;
+  id: KycStepProgress;
+  bank: KycStepProgress;
+  rejectionReason?: string;
+};
 export type UsageRights = {
   duration: string;
   channels: string[];

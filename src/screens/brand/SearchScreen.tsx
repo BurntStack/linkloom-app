@@ -93,20 +93,19 @@ export function Search({ navigation }: any) {
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: C.surface,
-          borderRadius: 99,
-          borderWidth: 1.2,
+          backgroundColor: C.surfaceSoft,
+          borderRadius: 16,
+          borderWidth: 1,
           borderColor: C.border,
-          paddingHorizontal: 12,
-          gap: 8,
-          ...shadowSm,
+          paddingHorizontal: 14,
+          gap: 10,
         }}
       >
-        <Ionicons name="search" size={17} color={C.muted} />
+        <Ionicons name="search" size={18} color={C.muted2} />
         <TextInput
           value={q}
           onChangeText={setQ}
-          placeholder="Name or @username"
+          placeholder="Search by name, platform, category..."
           placeholderTextColor={C.muted3}
           underlineColorAndroid="transparent"
           maxFontSizeMultiplier={1.16}
@@ -114,7 +113,7 @@ export function Search({ navigation }: any) {
             flex: 1,
             paddingVertical: 13,
             fontFamily: F.reg,
-            fontSize: 13.5,
+            fontSize: 14,
             color: C.text,
             backgroundColor: 'transparent',
           }}
@@ -131,33 +130,33 @@ export function Search({ navigation }: any) {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={{ flexGrow: 0 }}
-        contentContainerStyle={{ gap: 7 }}
+        contentContainerStyle={{ gap: 8, paddingVertical: 2 }}
       >
         <Pressable
           onPress={() => setFilterOpen(true)}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 13, backgroundColor: C.dark }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, backgroundColor: C.dark }}
         >
-          <Ionicons name="options-outline" size={16} color={C.onDark} />
-          <T size={12} w="semi" color={C.onDark}>Filters{activeFilterCount ? ` · ${activeFilterCount}` : ''}</T>
+          <Ionicons name="options-outline" size={15} color={C.onDark} />
+          <T size={12} w="semi" color={C.onDark}>Filters{activeFilterCount ? ` (${activeFilterCount})` : ''}</T>
         </Pressable>
         {cats.filter((item) => item !== 'All').map((c) => (
           <Pressable
             key={c}
-            onPress={() => setCat(c)}
+            onPress={() => setCat(cat === c ? 'All' : c)}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 6,
-              paddingVertical: 9,
+              gap: 5,
+              paddingVertical: 8,
               paddingHorizontal: 13,
-              borderRadius: 13,
-              backgroundColor: cat === c ? C.dark : C.surface,
+              borderRadius: 12,
+              backgroundColor: cat === c ? C.primary : C.surface,
               borderWidth: 1,
-              borderColor: cat === c ? C.dark : C.border2,
+              borderColor: cat === c ? C.primary : C.border,
             }}
           >
-            {cat === c ? <Ionicons name="checkmark" size={14} color={C.onDark} /> : null}
-            <T size={12} w={cat === c ? 'semi' : 'med'} color={cat === c ? C.onDark : C.text}>
+            {cat === c ? <Ionicons name="checkmark" size={13} color={C.onPrimary} /> : null}
+            <T size={12} w={cat === c ? 'semi' : 'med'} color={cat === c ? C.onPrimary : C.text}>
               {c}
             </T>
           </Pressable>

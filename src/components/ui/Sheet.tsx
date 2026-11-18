@@ -32,11 +32,11 @@ export function Sheet({
   const { height } = useWindowDimensions();
   const titleContent = title ? (
     <>
-      <T size={18} w="bold" track={-0.3} color={C.text}>
+      <T size={20} w="bold" track={-0.4} color={C.text}>
         {title}
       </T>
       {sub ? (
-        <T size={12.5} color={C.muted} style={{ lineHeight: 17 }}>
+        <T size={13} color={C.muted2} style={{ lineHeight: 18 }}>
           {sub}
         </T>
       ) : null}
@@ -57,29 +57,29 @@ export function Sheet({
         <View
           style={{
             backgroundColor: C.surface,
-            borderTopLeftRadius: fullScreen ? 0 : 26,
-            borderTopRightRadius: fullScreen ? 0 : 26,
+            borderTopLeftRadius: fullScreen ? 0 : 28,
+            borderTopRightRadius: fullScreen ? 0 : 28,
             maxHeight: fullScreen ? height : height * 0.9,
             flex: fullScreen ? 1 : undefined,
             paddingTop: fullScreen ? insets.top : 0,
-            paddingBottom: fullScreen ? insets.bottom : insets.bottom + 10,
+            paddingBottom: fullScreen ? insets.bottom : insets.bottom + 8,
             ...shadowLg,
           }}
         >
           {/* Material 3 Drag handle */}
           {!fullScreen ? (
-            <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 6 }}>
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border2 }} />
+            <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: C.border2 }} />
             </View>
           ) : null}
 
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 18, gap: 14 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20, gap: 16 }}>
             {title ? (
               <View style={headerRight
-                ? { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }
-                : { gap: 3 }}
+                ? { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingBottom: 2 }
+                : { gap: 4, paddingBottom: 2 }}
               >
-                {headerRight ? <View style={{ flex: 1, gap: 3 }}>{titleContent}</View> : titleContent}
+                {headerRight ? <View style={{ flex: 1, gap: 4 }}>{titleContent}</View> : titleContent}
                 {headerRight}
               </View>
             ) : null}
@@ -87,7 +87,7 @@ export function Sheet({
           </ScrollView>
 
           {footer ? (
-            <View style={{ paddingHorizontal: 18, paddingTop: 4, borderTopWidth: 1, borderTopColor: C.borderSubtle }}>
+            <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4, borderTopWidth: 1, borderTopColor: C.borderSubtle }}>
               {footer}
             </View>
           ) : null}

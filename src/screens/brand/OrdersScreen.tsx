@@ -50,42 +50,43 @@ export function Orders({ navigation }: any) {
         </Row>
       </Card>
 
-      <View style={{ gap: 3 }}>
-        <Row style={{ justifyContent: 'space-between', alignItems: 'center', paddingBottom: 7 }}>
-          <T size={11} w="bold" track={0.7} color={C.muted2}>CAMPAIGN ORDERS</T>
-          <T size={11} color={C.muted2}>{orders.length}</T>
+      <View style={{ gap: 12 }}>
+        <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <T size={12} w="semi" track={0.6} color={C.muted}>CAMPAIGN ORDERS ({orders.length})</T>
+          {awaiting > 0 ? (
+            <View style={{ backgroundColor: C.amberBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 }}>
+              <T size={11} w="semi" color={C.amber}>{awaiting} to review</T>
+            </View>
+          ) : null}
         </Row>
-        {orders.map((o: any) => {
-          const c = creatorById(o.creatorId);
-          return (
-            <Pressable
-              key={o.id}
-              onPress={() => openSheet('order', { orderId: o.id })}
-              accessibilityRole="button"
-              style={({ pressed }) => ({
-                paddingVertical: 14,
-                borderBottomWidth: 1,
-                borderBottomColor: C.borderSubtle,
-                opacity: pressed ? 0.75 : 1,
-              })}
-            >
-              <Row style={{ alignItems: 'flex-start', gap: 11 }}>
-                <Avatar name={c.name} size={42} photo={c.photo} />
-                <View style={{ flex: 1, gap: 5 }}>
-                  <T size={14} w="semi" color={C.text} numberOfLines={2}>{o.title}</T>
-                  <T size={12} color={C.textSecondary}>{c.name} · {o.kind}</T>
-                  <View style={{ alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 99, backgroundColor: o.stage === 'delivered' ? C.amberBg : o.stage === 'released' ? C.greenBg : C.primaryLight }}>
-                    <T size={11} w="semi" color={o.stage === 'delivered' ? C.amber : o.stage === 'released' ? C.green : C.primary}>{stage(o.stage)}</T>
+
+        <View style={{ gap: 12 }}>
+          {orders.map((o: any) => {
+            const c = creatorById(o.creatorId);
+            return (
+              <Card
+                key={o.id}
+                onPress={() => openSheet('order', { orderId: o.id })}
+                style={{ padding: 16, gap: 10 }}
+              >
+                <Row style={{ alignItems: 'flex-start', gap: 12 }}>
+                  <Avatar name={c.name} size={46} photo={c.photo} />
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <T size={15} w="semi" color={C.text} numberOfLines={2}>{o.title}</T>
+                    <T size={12.5} color={C.textSecondary}>{c.name} · {o.kind}</T>
+                    <View style={{ alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3.5, borderRadius: 99, backgroundColor: o.stage === 'delivered' ? C.amberBg : o.stage === 'released' ? C.greenBg : C.primaryLight, marginTop: 2 }}>
+                      <T size={11} w="semi" color={o.stage === 'delivered' ? C.amber : o.stage === 'released' ? C.green : C.primary}>{stage(o.stage)}</T>
+                    </View>
                   </View>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                  <T size={15} w="semi" color={C.text}>{inr(o.held)}</T>
-                  <T size={11} color={C.muted2}>{o.stage === 'delivered' ? o.deliveredOn : o.paidOn}</T>
-                </View>
-              </Row>
-            </Pressable>
-          );
-        })}
+                  <View style={{ alignItems: 'flex-end', gap: 3 }}>
+                    <T size={16} w="bold" color={C.text}>{inr(o.held)}</T>
+                    <T size={11} color={C.muted2}>{o.stage === 'delivered' ? o.deliveredOn : o.paidOn}</T>
+                  </View>
+                </Row>
+              </Card>
+            );
+          })}
+        </View>
       </View>
       {!orders.length ? (
         <Card style={{ alignItems: 'center', gap: 7, padding: 22 }}>

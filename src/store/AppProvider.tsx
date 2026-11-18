@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { AppState, useColorScheme } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { CommonActions } from '@react-navigation/native';
 import { CREATORS, JOBS, LISTS, ORDERS, Creator, CreatorAccountProfile, Job, Bid } from '../data';
 import {
   addCreatorToList,
   addCartItem,
+  ApiError,
   approveOrder as approveOrderRequest,
   cancelOrder as cancelOrderRequest,
   checkoutCart,
@@ -34,6 +35,7 @@ import {
   getCurrentUser,
   getList,
   getLists,
+  getKycStatus,
   getOffers,
   getOrder,
   getOrderDeliverables,
@@ -52,20 +54,27 @@ import {
   respondToOffer,
   reviewOrder as reviewOrderRequest,
   saveBrandProfile,
+  saveKycBank,
+  saveKycId,
+  saveKycPan,
   saveCreatorProfile as saveCreatorProfileRequest,
   sendConversationMessage,
   startConversation as startConversationRequest,
   selectCampaignBid,
   submitOrderDeliverable,
   submitCampaignBid,
+  submitKyc as submitKycRequest,
   updateCreatorPackage,
   updateList,
   updateCampaign,
   updateCampaignBid,
   withdrawCampaignBid,
   withdrawOffer,
+  uploadKycDocument,
   type AuthRole,
   type BrandOnboarding,
+  type KycStatusSnapshot,
+  type KycDocumentFile,
   type UsageRights,
 } from '../api';
 import { Ctx } from './AppContext';
@@ -113,6 +122,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [kycOpen, setKycOpen] = useState(false);
+  const [kycStatus, setKycStatus] = useState<KycStatusSnapshot | null>(null);
+  const [kycLoading, setKycLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pendingCreator, setPendingCreator] = useState<string | null>(null);
   const timer = useRef<any>(null);
@@ -147,6 +159,93 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSheet({ type, params });
   };
   const closeSheet = () => setSheet(null);
+  const openKyc = () => setKycOpen(true);
+  const closeKyc = () => {
+    setKycOpen(false);
+  };
+  const refreshKycStatus = useCallback(async () => {
+    setKycLoading(true);
+    try {
+      const status = await getKycStatus();
+      setKycStatus(status);
+      return status;
+    } finally {
+      setKycLoading(false);
+    }
+  }, []);
+  const submitKyc = async (input: {
+    pan?: string;
+    nameOnPan?: string;
+    idType?: 'aadhaar' | 'passport' | 'driving_licence' | 'voter_id';
+    idDocument?: KycDocumentFile;
+    accountHolderName?: string;
+    accountNumber?: string;
+    ifsc?: string;
+  }) => {
+    try {
+      if (input.pan !== undefined && input.nameOnPan !== undefined) {
+        await saveKycPan({ pan: input.pan, nameOnPan: input.nameOnPan });
+      }
+      if (input.idDocument && input.idType) {
+        const uploadId = await uploadKycDocument(input.idDocument);
+        await saveKycId({ idType: input.idType, uploadId });
+      }
+      if (
+        input.accountHolderName !== undefined &&
+        input.accountNumber !== undefined &&
+        input.ifsc !== undefined
+      ) {
+        await saveKycBank({
+          accountHolderName: input.accountHolderName,
+          accountNumber: input.accountNumber,
+          ifsc: input.ifsc,
+        });
+      }
+      await submitKycRequest();
+    } catch (error) {
+      try {
+        await refreshKycStatus();
+      } catch (refreshError) {
+        throw new Error([
+          error instanceof Error ? error.message : 'Unable to save the KYC step.',
+          `KYC status refresh also failed: ${refreshError instanceof Error ? refreshError.message : 'unknown error'}`,
+        ].join(' '));
+      }
+      throw error;
+    }
+    try {
+      return await refreshKycStatus();
+    } catch (error) {
+      throw new Error(`KYC was submitted, but status refresh failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
+  };
+  const handleKycRequired = (error: unknown) => {
+    if (!(error instanceof ApiError) || error.code !== 'KYC_REQUIRED') return false;
+    openKyc();
+    return true;
+  };
+  const performVerifiedAction = async <T,>(action: string, operation: () => Promise<T>): Promise<T> => {
+    if (kycStatus?.status !== 'verified') {
+      openKyc();
+      throw new ApiError(`Your KYC must be verified before you can ${action}.`, 403, 'KYC_REQUIRED');
+    }
+    try {
+      return await operation();
+    } catch (error) {
+      await handleKycRequired(error);
+      throw error;
+    }
+  };
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && loggedIn) {
+        refreshKycStatus().catch((error: unknown) => {
+          showToast(error instanceof Error ? error.message : 'Unable to refresh your KYC status.');
+        });
+      }
+    });
+    return () => subscription.remove();
+  }, [loggedIn, refreshKycStatus, showToast]);
 
   const reset = (routes: any[]) =>
     navRef.isReady() && navRef.dispatch(CommonActions.reset({ index: routes.length - 1, routes }));
@@ -155,6 +254,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLoggedIn(true);
     setAccountRole(role);
     setSessionUser(user || null);
+    setKycStatus(null);
     setJobs([]);
     setOrders([]);
     setLists([]);
@@ -192,11 +292,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
   const findCreatorProfile = (email: string) => creatorProfilesByEmail[email.trim().toLowerCase()] || null;
-  const submitCreatorBid = async (bid: any) => {
+  const submitCreatorBid = async (bid: any) => performVerifiedAction('submit a bid', async () => {
     const response = await submitCampaignBid(bid.jobId, {
-      price: bid.price,
-      message: bid.proposal,
-      deliveryDays: bid.deliveryDays,
+        price: bid.price,
+        message: bid.proposal,
+        deliveryDays: bid.deliveryDays,
     });
     const savedBid = {
       ...mapBid(response.bid || response),
@@ -207,7 +307,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCreatorBids((previous) => [savedBid, ...previous]);
     await Promise.all([refreshCreatorBids(), refreshCampaigns()]);
     return savedBid;
-  };
+  });
   const refreshCampaigns = useCallback(() => {
     if (!campaignRefreshInFlight.current) {
       campaignRefreshInFlight.current = (async () => {
@@ -484,12 +584,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const sendOffer = async (input: {
     creatorId: string; deliverable: string; budget: number; deadline: string; message: string; usageRights: UsageRights;
-  }) => {
+  }) => performVerifiedAction('send an offer', async () => {
     const response = await createOffer(input);
     const offer = mapOffer(response.offer || response);
     setOffers((previous) => [offer, ...previous.filter((item) => item.id !== offer.id)]);
     return offer;
-  };
+  });
   const respondOffer = async (id: string, status: 'accepted' | 'rejected') => {
     const response = await respondToOffer(id, status);
     const updated = mapOffer(response.offer || response);
@@ -509,10 +609,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await removeCartItem(id);
     setCart((previous) => previous.filter((item) => String(item.id) !== id));
   };
-  const checkout = async () => {
+  const checkout = async () => performVerifiedAction('check out', async () => {
     if (!cartId) throw new Error('The server did not return a cart ID. Refresh the cart and try again.');
     return checkoutCart(cartId);
-  };
+  });
   const submitDeliverable = async (id: string, contentUrl: string, note: string) => {
     const response = await submitOrderDeliverable(id, contentUrl, note);
     await Promise.all([loadOrderDetails(id), refreshOrders()]);
@@ -616,9 +716,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const initializeWorkspace = async (role: AuthRole = accountRole, creatorId?: string) => {
     const tasks = role === 'creator'
-      ? [refreshCampaigns(), refreshCreatorBids(creatorId), refreshOrders(role), refreshCreatorPackages(), refreshOffers(role), refreshNotifications(), refreshConversations()]
-      : [refreshCampaigns(), refreshOrders(role), refreshLists(), refreshNotifications(), searchCreators(), refreshOffers(role), refreshCart(), refreshConversations()];
+      ? [refreshKycStatus(), refreshCampaigns(), refreshCreatorBids(creatorId), refreshOrders(role), refreshCreatorPackages(), refreshOffers(role), refreshNotifications(), refreshConversations()]
+      : [refreshKycStatus(), refreshCampaigns(), refreshOrders(role), refreshLists(), refreshNotifications(), searchCreators(), refreshOffers(role), refreshCart(), refreshConversations()];
     const results = await Promise.allSettled(tasks);
+    const kycFailure = results.find((result) => result.status === 'rejected' &&
+      result.reason instanceof ApiError && result.reason.code === 'KYC_REQUIRED');
+    if (kycFailure?.status === 'rejected') {
+      handleKycRequired(kycFailure.reason);
+      return;
+    }
     const failed = results.find((result) => result.status === 'rejected');
     if (failed?.status === 'rejected') {
       showToast(failed.reason instanceof Error ? failed.reason.message : 'Some workspace data could not be loaded.');
@@ -739,6 +845,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLoggedIn(false);
     setAccountRole('brand');
     setSessionUser(null);
+    setKycStatus(null);
+    setKycOpen(false);
     setBrandProfile(null);
     setCreatorProfile(null);
     setBrandName('');
@@ -767,6 +875,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoggedIn(false);
       setAccountRole('brand');
       setSessionUser(null);
+      setKycStatus(null);
+      setKycOpen(false);
       setBrandProfile(null);
       setCreatorProfile(null);
       setBrandName('');
@@ -794,7 +904,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else navRef.navigate('CreatorProfile', { id });
   };
 
-  const addJob = async (input: Partial<Job>) => {
+  const addJob = async (input: Partial<Job>) => performVerifiedAction('publish a campaign', async () => {
     const response = await createCampaign({
       title: input.title || '',
       brief: input.description || input.deliverables || '',
@@ -808,8 +918,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const job = mapCampaign(response.campaign || response);
     setJobs((previous) => [job, ...previous.filter((item) => item.id !== job.id)]);
     return job;
-  };
-  const updateJob = async (id: string, patch: Partial<Job>) => {
+  });
+  const updateJob = async (id: string, patch: Partial<Job>) => performVerifiedAction('update a campaign', async () => {
     const response = await updateCampaign(id, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(patch.description !== undefined ? { brief: patch.description } : {}),
@@ -823,22 +933,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updated = mapCampaign(response.campaign || response);
     setJobs((previous) => previous.map((job) => job.id === id ? { ...job, ...updated } : job));
     return updated;
-  };
-  const closeJob = async (id: string) => {
+  });
+  const closeJob = async (id: string) => performVerifiedAction('close a campaign', async () => {
     await closeCampaign(id);
     setJobs((previous) => previous.map((job) => job.id === id ? { ...job, status: 'completed' } : job));
-  };
-  const withdrawBid = async (jobId: string, bidId: string) => {
+  });
+  const withdrawBid = async (jobId: string, bidId: string) => performVerifiedAction('withdraw a bid', async () => {
     await withdrawCampaignBid(jobId, bidId);
     setCreatorBids((previous) => previous.map((bid) => bid.id === bidId ? { ...bid, status: 'withdrawn' } : bid));
     await refreshCreatorBids();
-  };
-  const updateBid = async (jobId: string, bidId: string, input: { price?: number; message?: string; deliveryDays?: number }) => {
+  });
+  const updateBid = async (jobId: string, bidId: string, input: { price?: number; message?: string; deliveryDays?: number }) =>
+    performVerifiedAction('update a bid', async () => {
     const response = await updateCampaignBid(jobId, bidId, input);
     await refreshCreatorBids();
     return response;
-  };
-  const hireBid = async (jobId: string, bid: Bid) => {
+  });
+  const hireBid = async (jobId: string, bid: Bid) => performVerifiedAction('select a creator bid', async () => {
     const response = await selectCampaignBid(jobId, bid.id);
     setJobs((previous) => previous.map((job) => (job.id === jobId ? { ...job, status: 'progress', hired: bid.creatorId, closes: '', bids: [] } : job)));
     if (response?.order) setOrders((previous) => [mapOrder(response.order), ...previous.filter((order) => order.id !== String(response.order.id))]);
@@ -853,7 +964,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ? `Proposal accepted from ${name}, but orders could not refresh: ${orderRefreshError instanceof Error ? orderRefreshError.message : 'please reopen Orders.'}`
       : `Proposal accepted from ${name}.`);
     return response;
-  };
+  });
   const addList = async (name: string) => {
     const response = await createList(name);
     const rawList = response.list || response;
@@ -890,7 +1001,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadCreatorReviews,
       unread, sessionUser, loadBrandProfile, loadCreatorProfile, saveBrandOnboarding, saveCreatorOnboarding, restoreSession, refreshSessionUser, initializeWorkspace,
       logoutAll,
-      sheet, openSheet, closeSheet, toast, showToast, openCreator, setPendingCreator, reset,
+      sheet, openSheet, closeSheet, kycOpen, kycStatus, kycLoading, openKyc, closeKyc, submitKyc, refreshKycStatus,
+      toast, showToast, openCreator, setPendingCreator, reset,
     }}>
       {children}
     </Ctx.Provider>

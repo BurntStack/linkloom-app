@@ -21,10 +21,10 @@ const Stack = createNativeStackNavigator();
 const TABS: Record<string, [string, string, string]> = {
   Home: ['Home', 'home-outline', 'home'],
   Search: ['Creators', 'people-outline', 'people'],
-  Jobs: ['Jobs', 'briefcase-outline', 'briefcase'],
-  Dashboard: ['Campaigns', 'albums-outline', 'albums'],
-  Orders: ['Payments', 'wallet-outline', 'wallet'],
   Create: ['Post', 'add', 'add'],
+  Jobs: ['Campaigns', 'briefcase-outline', 'briefcase'],
+  Orders: ['Payments', 'wallet-outline', 'wallet'],
+  Dashboard: ['Campaigns', 'albums-outline', 'albums'],
   FindJobs: ['Find Jobs', 'search-outline', 'search'],
   MyBids: ['My Bids', 'paper-plane-outline', 'paper-plane'],
   ActiveJobs: ['Active Jobs', 'briefcase-outline', 'briefcase'],
@@ -35,10 +35,8 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { orders, openSheet } = useApp() || {};
   const awaitingOrders = orders?.filter((o: any) => o.stage === 'delivered').length || 0;
-  const visibleRoutes = state.routes.filter((route) => route.name !== 'Create');
-  const createRoute = state.routes.find((route) => route.name === 'Create');
-  const jobsIndex = visibleRoutes.findIndex((route) => route.name === 'Jobs');
-  if (createRoute && jobsIndex !== -1) visibleRoutes.splice(jobsIndex, 1, createRoute);
+  // Dashboard is an alias to Home and should not appear as a separate tab.
+  const visibleRoutes = state.routes.filter((route) => route.name !== 'Dashboard');
   const currentRoute = state.routes[state.index]?.name;
 
   return (
@@ -55,7 +53,8 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
       }}
     >
       {visibleRoutes.map((r) => {
-        const active = currentRoute === r.name || (r.name === 'Create' && currentRoute === 'Jobs');
+        const isCreate = r.name === 'Create';
+        const active = currentRoute === r.name;
         const [label, off, on] = TABS[r.name] || [r.name, 'ellipse-outline', 'ellipse'];
         const showBadge = r.name === 'Orders' && awaitingOrders > 0;
 
@@ -63,8 +62,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
           <Pressable
             key={r.key}
             onPress={() => {
-              if (r.name === 'Create') {
-                navigation.navigate('Jobs');
+              if (isCreate) {
                 openSheet('postjob');
                 return;
               }
@@ -72,7 +70,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
               if (currentRoute !== r.name && !e.defaultPrevented) navigation.navigate(r.name);
             }}
             accessibilityRole="button"
-            accessibilityLabel={r.name === 'Create' ? 'Post a campaign brief' : label}
+            accessibilityLabel={isCreate ? 'Post a campaign brief' : label}
             android_ripple={{ color: C.ripple, borderless: true }}
             style={{
               flex: 1,
@@ -80,25 +78,25 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
               gap: 3,
               minHeight: 50,
               borderRadius: 16,
-              overflow: r.name === 'Create' ? 'visible' : 'hidden',
+              overflow: isCreate ? 'visible' : 'hidden',
             }}
           >
-            {/* Material 3 active pill indicator */}
             <View
               style={{
-                width: r.name === 'Create' ? 48 : 50,
-                height: r.name === 'Create' ? 44 : 28,
-                borderRadius: r.name === 'Create' ? 24 : 14,
+                width: isCreate ? 46 : 48,
+                height: isCreate ? 42 : 28,
+                borderRadius: isCreate ? 21 : 14,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: r.name === 'Create' ? C.primary : active ? C.primaryLight : 'transparent',
-                marginTop: r.name === 'Create' ? -14 : 0,
+                backgroundColor: isCreate ? C.primary : active ? C.primaryLight : 'transparent',
+                marginTop: isCreate ? -10 : 0,
+                ...(isCreate ? shadowSm : {}),
               }}
             >
               <Ionicons
                 name={(active ? on : off) as any}
-                size={r.name === 'Create' ? 27 : 20}
-                color={r.name === 'Create' ? C.onPrimary : active ? C.primary : C.muted3}
+                size={isCreate ? 24 : 19}
+                color={isCreate ? C.onPrimary : active ? C.primary : C.muted2}
               />
               {showBadge ? (
                 <View
@@ -117,9 +115,9 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
               ) : null}
             </View>
             <T
-              size={11}
-              w={active ? 'bold' : 'med'}
-              color={active ? C.primary : C.muted}
+              size={10.5}
+              w={active ? 'semi' : 'med'}
+              color={active ? C.primary : C.muted2}
             >
               {label}
             </T>
@@ -139,10 +137,10 @@ function Main() {
     >
       <Tab.Screen name="Home" component={Home} />
       <Tab.Screen name="Search" component={Search} />
-      <Tab.Screen name="Jobs" component={Jobs} />
-      <Tab.Screen name="Dashboard" component={Dashboard} />
-      <Tab.Screen name="Orders" component={Orders} />
       <Tab.Screen name="Create" component={CreateAction} />
+      <Tab.Screen name="Jobs" component={Jobs} />
+      <Tab.Screen name="Orders" component={Orders} />
+      <Tab.Screen name="Dashboard" component={Home} />
     </Tab.Navigator>
   );
 }

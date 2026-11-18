@@ -5,9 +5,10 @@ import { Avatar, Card, StackHeader, T } from '../../../components/ui';
 import { EmailVerification } from '../../../components/ui/EmailVerification';
 import { C } from '../../../theme';
 import { useApp } from '../../../store';
+import { KycProfileCard } from '../../sheets/KycSheet';
 
 export function CreatorSettings({ navigation }: any) {
-  const { creatorProfile, logout, openSheet } = useApp();
+  const { creatorProfile, logout, openSheet, openKyc, kycStatus, kycLoading } = useApp();
 
   const SettingRow = ({ icon, label, detail, onPress, danger = false }: any) => (
     <Pressable
@@ -45,6 +46,7 @@ export function CreatorSettings({ navigation }: any) {
           </View>
         </Card>
         <EmailVerification />
+        <KycProfileCard submission={kycStatus} loading={kycLoading} onPress={openKyc} />
         <View style={{ gap: 7 }}>
           <T size={10.5} w="bold" color={C.muted} track={0.7}>PROFILE</T>
           <Card style={{ paddingVertical: 5, paddingHorizontal: 13 }}>

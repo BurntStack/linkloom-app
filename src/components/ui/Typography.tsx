@@ -10,16 +10,19 @@ export type TextCustomProps = TextProps & {
 };
 
 export function T({ size = TYPO.body, w = 'reg', color = C.text, track, style, children, ...rest }: TextCustomProps) {
+  const defaultTrack = size >= 24 ? -0.5 : size >= 18 ? -0.2 : 0;
+  const letterSpacing = track !== undefined ? track : defaultTrack;
+
   return (
     <Text
       {...rest}
       maxFontSizeMultiplier={1.16}
       style={[
         {
-          fontFamily: F[w === 'semi' ? 'bold' : w],
+          fontFamily: F[w] || F.reg,
           fontSize: size,
           color,
-          letterSpacing: track !== undefined ? track : -0.2,
+          letterSpacing,
           includeFontPadding: false,
         },
         style,

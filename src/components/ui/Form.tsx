@@ -13,6 +13,7 @@ export function Field({
   multiline,
   keyboardType,
   secure,
+  secureToggle = false,
   maxLength,
 }: {
   label?: string;
@@ -23,9 +24,11 @@ export function Field({
   multiline?: boolean;
   keyboardType?: any;
   secure?: boolean;
+  secureToggle?: boolean;
   maxLength?: number;
 }) {
   const [focused, setFocused] = useState(false);
+  const [secureVisible, setSecureVisible] = useState(false);
 
   return (
     <View style={{ gap: 5 }}>
@@ -58,7 +61,7 @@ export function Field({
           placeholderTextColor={C.muted3}
           multiline={multiline}
           keyboardType={keyboardType}
-          secureTextEntry={secure}
+          secureTextEntry={secure && !(secureToggle && secureVisible)}
           maxLength={maxLength}
           underlineColorAndroid="transparent"
           autoCapitalize="none"
@@ -76,6 +79,17 @@ export function Field({
             textAlignVertical: multiline ? 'top' : 'center',
           }}
         />
+        {secure && secureToggle ? (
+          <Pressable
+            onPress={() => setSecureVisible((visible) => !visible)}
+            accessibilityRole="button"
+            accessibilityLabel={secureVisible ? 'Hide password' : 'Show password'}
+            hitSlop={8}
+            style={{ minWidth: 32, minHeight: 40, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name={secureVisible ? 'eye-off-outline' : 'eye-outline'} size={18} color={C.muted} />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

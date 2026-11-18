@@ -34,110 +34,123 @@ export function CreatorHome({ navigation }: any) {
   const name = creatorProfile?.name || 'Creator';
   return (
     <Page navigation={navigation} header={<CreatorHeader navigation={navigation} />}>
-      <View style={{ gap: 6, paddingTop: 1 }}>
-        <T size={11} w="semi" track={1.1} color={C.muted}>{formatHomeDate(now)}</T>
-        <T size={32} w="semi" track={-1} color={C.text} accessibilityRole="header">{greetingForHour(now.getHours())}, {name.split(' ')[0]}.</T>
+      <View style={{ gap: 6, paddingTop: 4 }}>
+        <T size={11} w="semi" track={1} color={C.muted}>{formatHomeDate(now)}</T>
+        <T size={28} w="bold" track={-0.6} color={C.text} accessibilityRole="header">{greetingForHour(now.getHours())}, {name.split(' ')[0]}.</T>
       </View>
 
-      <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 3 }}>
-        <T size={22} w="semi" track={-0.6} color={C.text} accessibilityRole="header">Needs you</T>
-        <T size={12} w="semi" color={C.muted}>{activeOrders.length}</T>
-      </Row>
-      {activeOrders.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-          {activeOrders.map((order: any) => (
-            <Card key={order.id} style={{ width: 300, gap: 12, borderColor: C.creatorAccent, borderWidth: 1.4, padding: 14 }}>
-              <Row style={{ justifyContent: 'space-between', gap: 8 }}>
-                <Row style={{ gap: 9, flex: 1 }}>
-                  <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
-                    <T size={15} w="semi" color={C.primary}>{(order.title || 'B').slice(0, 1).toUpperCase()}</T>
-                  </View>
-                  <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <T size={12} w="semi" color={C.text} numberOfLines={1}>{order.title}</T>
-                    <T size={10} color={C.muted}>{order.stage === 'delivered' ? 'Approval pending' : 'Active job'}</T>
+      {/* Needs Attention */}
+      <View style={{ gap: 12, marginTop: 6 }}>
+        <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <T size={20} w="bold" color={C.text} accessibilityRole="header">Needs your attention</T>
+          {activeOrders.length ? (
+            <View style={{ backgroundColor: C.pinkBg, paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 99 }}>
+              <T size={11} w="semi" color={C.pinkText}>{activeOrders.length} active</T>
+            </View>
+          ) : null}
+        </Row>
+        {activeOrders.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+            {activeOrders.map((order: any) => (
+              <Card key={order.id} style={{ width: 310, gap: 12, borderColor: C.border, padding: 16 }}>
+                <Row style={{ justifyContent: 'space-between', gap: 8 }}>
+                  <Row style={{ gap: 10, flex: 1 }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+                      <T size={15} w="semi" color={C.primary}>{(order.title || 'B').slice(0, 1).toUpperCase()}</T>
+                    </View>
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <T size={13.5} w="semi" color={C.text} numberOfLines={1}>{order.title}</T>
+                      <T size={11} color={C.muted2}>{order.stage === 'delivered' ? 'Approval pending' : 'Active job'}</T>
+                    </View>
+                  </Row>
+                  <View style={{ borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4, backgroundColor: C.cta }}>
+                    <T size={10.5} w="semi" color={C.onCta}>Your move</T>
                   </View>
                 </Row>
-                <View style={{ borderRadius: 15, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: C.cta }}>
-                  <T size={10} w="semi" color={C.onCta}>Your move</T>
+                <T size={15} w="semi" color={C.text} numberOfLines={2}>{order.stage === 'delivered' ? 'Your work is submitted and awaiting brand review' : order.title}</T>
+                <T size={12} color={C.muted2} numberOfLines={2}>{order.kind || 'Open your active job to review deliverable details.'}</T>
+                <Btn label="Open job" small onPress={() => openSheet('order', { orderId: order.id })} style={{ alignSelf: 'flex-start', paddingHorizontal: 16 }} />
+              </Card>
+            ))}
+          </ScrollView>
+        ) : (
+          <Card style={{ gap: 10, padding: 16 }}>
+            <T size={13} color={C.muted2}>{loadingCampaigns ? 'Loading your active jobs…' : 'Nothing needs your attention right now.'}</T>
+            <Btn label="Explore jobs" small variant="outline" onPress={() => navigation.navigate('FindJobs')} style={{ alignSelf: 'flex-start' }} />
+          </Card>
+        )}
+      </View>
+
+      {/* Upcoming Deadlines */}
+      <View style={{ gap: 12, marginTop: 6 }}>
+        <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <T size={20} w="bold" color={C.text} accessibilityRole="header">Upcoming deadlines</T>
+          <Pressable onPress={() => navigation.navigate('CreatorMain', { screen: 'ActiveJobs' })} accessibilityRole="button">
+            <T size={13} w="semi" color={C.primary}>Active jobs →</T>
+          </Pressable>
+        </Row>
+        {activeOrders.length ? activeOrders.slice(0, 3).map((order: any) => {
+          const due = dueDateParts(order.draftDue);
+          return (
+            <Card
+              key={order.id}
+              onPress={() => openSheet('order', { orderId: order.id })}
+              style={{ padding: 14 }}
+            >
+              <Row style={{ alignItems: 'center', gap: 14 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.surfaceSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <T size={17} w="bold" color={C.text}>{due.day}</T>
+                  <T size={9.5} w="semi" color={C.muted2}>{due.month}</T>
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <T size={13.5} w="semi" color={C.text}>{order.stage === 'delivered' ? 'Brand approval due' : 'Draft submission due'}</T>
+                  <T size={12} color={C.muted2} numberOfLines={1}>{order.title}</T>
+                </View>
+                <View style={{ borderRadius: 12, backgroundColor: C.accentSoft, paddingVertical: 5, paddingHorizontal: 10 }}>
+                  <T size={12} w="semi" color={C.pinkText}>{inr(order.fee || 0)}</T>
                 </View>
               </Row>
-              <T size={16} w="semi" color={C.text} numberOfLines={2}>{order.stage === 'delivered' ? 'Your work is ready for review' : order.title}</T>
-              <T size={12} color={C.muted} numberOfLines={2}>{order.kind || 'Open your active job to review its details.'}</T>
-              <Btn label="Open job" onPress={() => openSheet('order', { orderId: order.id })} style={{ alignSelf: 'flex-start', minHeight: 40, paddingHorizontal: 18 }} />
             </Card>
-          ))}
-        </ScrollView>
-      ) : (
-        <Card style={{ gap: 10 }}>
-          <T size={13} color={C.muted}>{loadingCampaigns ? 'Loading your active jobs…' : 'Nothing needs your attention right now.'}</T>
-          <Btn label="Find jobs" small variant="outline" onPress={() => navigation.navigate('FindJobs')} style={{ alignSelf: 'flex-start' }} />
-        </Card>
-      )}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
-        {activeOrders.slice(0, 2).map((order: any, index: number) => (
-          <View key={order.id} style={{ width: index === 0 ? 17 : 6, height: 6, borderRadius: 4, backgroundColor: index === 0 ? C.text : C.border2 }} />
-        ))}
+          );
+        }) : (
+          <T size={12.5} color={C.muted2}>{loadingCampaigns ? 'Loading your active work…' : 'Your upcoming job deadlines will show here.'}</T>
+        )}
       </View>
 
-      <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 5 }}>
-        <T size={22} w="semi" track={-0.6} color={C.text} accessibilityRole="header">Upcoming deadlines</T>
-        <Pressable onPress={() => navigation.navigate('CreatorMain', { screen: 'ActiveJobs' })} accessibilityRole="button">
-          <T size={12} w="semi" color={C.text}>Active jobs</T>
-        </Pressable>
-      </Row>
-      {activeOrders.length ? activeOrders.slice(0, 3).map((order: any) => {
-        const due = dueDateParts(order.draftDue);
-        return (
-          <Pressable
-            key={order.id}
-            onPress={() => openSheet('order', { orderId: order.id })}
-            accessibilityRole="button"
-            accessibilityLabel={`${order.stage === 'delivered' ? 'Brand approval due' : 'Active job'}: ${order.title}, ${due.day} ${due.month}, ${inr(order.fee || 0)}`}
-            style={{ paddingVertical: 10, borderBottomWidth: 1, borderColor: C.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}
-          >
-            <View style={{ width: 42, alignItems: 'center' }}>
-              <T size={19} w="semi" color={C.text}>{due.day}</T>
-              <T size={9} w="semi" color={C.muted}>{due.month}</T>
-            </View>
-            <View style={{ flex: 1, gap: 3 }}>
-              <T size={12} w="semi" color={C.text}>{order.stage === 'delivered' ? 'Brand approval due' : 'Active job'}</T>
-              <T size={11} color={C.muted} numberOfLines={1}>{order.title}</T>
-            </View>
-            <View style={{ borderRadius: 20, backgroundColor: C.accentSoft, paddingVertical: 6, paddingHorizontal: 9 }}>
-              <T size={11} w="semi" color={C.pinkText}>{inr(order.fee || 0)}</T>
-            </View>
+      {/* Open Campaigns */}
+      <View style={{ gap: 12, marginTop: 6 }}>
+        <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <T size={20} w="bold" color={C.text} accessibilityRole="header">Open campaigns</T>
+          <Pressable onPress={() => navigation.navigate('FindJobs')} accessibilityRole="button">
+            <T size={13} w="semi" color={C.primary}>See all →</T>
           </Pressable>
-        );
-      }) : (
-        <T size={12} color={C.muted}>{loadingCampaigns ? 'Loading your active work…' : 'Your upcoming job deadlines will show here.'}</T>
-      )}
-
-      <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 7 }}>
-        <T size={22} w="semi" track={-0.6} color={C.text} accessibilityRole="header">Open campaigns</T>
-        <Pressable onPress={() => navigation.navigate('FindJobs')} accessibilityRole="button">
-          <T size={12} w="semi" color={C.text}>See all</T>
-        </Pressable>
-      </Row>
-      {recommendations.length ? recommendations.slice(0, 3).map((job) => (
-        <JobCard key={job.id} job={job} onPress={() => navigation.navigate('CreatorJobDetail', { jobId: job.id })} />
-      )) : (
-        <Card><T size={12} color={C.muted}>{loadingCampaigns ? 'Loading brand campaigns…' : 'No open campaigns are available right now.'}</T></Card>
-      )}
-
-      <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
-        <T size={22} w="semi" track={-0.6} color={C.text} accessibilityRole="header">Earnings &amp; escrow</T>
-        <Pressable onPress={() => navigation.navigate('CreatorMain', { screen: 'Earnings' })} accessibilityRole="button">
-          <T size={12} w="semi" color={C.text}>Earnings</T>
-        </Pressable>
-      </Row>
-      <View style={{ flexDirection: 'row', backgroundColor: C.surface, borderRadius: 18, borderWidth: 1, borderColor: C.border, overflow: 'hidden' }}>
-        <MoneyMetric label="Ready" amount={earned} note="Released" />
-        <MoneyMetric label="Clearing" amount={clearing} note="In progress" />
-        <MoneyMetric label="Escrow" amount={escrow} note={`${activeOrders.length} active jobs`} accent />
+        </Row>
+        {recommendations.length ? recommendations.slice(0, 3).map((job) => (
+          <JobCard key={job.id} job={job} onPress={() => navigation.navigate('CreatorJobDetail', { jobId: job.id })} />
+        )) : (
+          <Card><T size={12.5} color={C.muted2}>{loadingCampaigns ? 'Loading brand campaigns…' : 'No open campaigns are available right now.'}</T></Card>
+        )}
       </View>
 
-      <T size={11} color={C.muted} style={{ textAlign: 'center', paddingVertical: 6 }}>Creator plan · no fee on any deal</T>
-      <Btn label={`View offers${myBids.length ? ` · ${myBids.length} bids` : ''}`} icon="mail-outline" onPress={() => navigation.navigate('Offers')} variant="outline" />
+      {/* Earnings & Escrow */}
+      <View style={{ gap: 12, marginTop: 6 }}>
+        <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <T size={20} w="bold" color={C.text} accessibilityRole="header">Earnings &amp; escrow</T>
+          <Pressable onPress={() => navigation.navigate('CreatorMain', { screen: 'Earnings' })} accessibilityRole="button">
+            <T size={13} w="semi" color={C.primary}>Wallet →</T>
+          </Pressable>
+        </Row>
+        <View style={{ flexDirection: 'row', backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.border, overflow: 'hidden' }}>
+          <MoneyMetric label="Ready" amount={earned} note="Released" />
+          <MoneyMetric label="Clearing" amount={clearing} note="In progress" />
+          <MoneyMetric label="Escrow" amount={escrow} note={`${activeOrders.length} jobs`} accent />
+        </View>
+      </View>
+
+      <View style={{ gap: 10, marginTop: 4, paddingBottom: 10 }}>
+        <T size={11.5} color={C.muted2} style={{ textAlign: 'center' }}>Direct deals · Zero platform fee</T>
+        <Btn label={`View offers${myBids.length ? ` (${myBids.length} bids)` : ''}`} icon="mail-outline" onPress={() => navigation.navigate('Offers')} variant="outline" />
+      </View>
     </Page>
   );
 }

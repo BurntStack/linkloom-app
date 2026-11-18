@@ -13,3 +13,5 @@ export * from './payments';
 export * from './wallet';
 export * from './conversations';
 export * from './reports';
+export * from './kyc';
+export * from './uploads';

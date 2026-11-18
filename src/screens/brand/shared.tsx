@@ -14,12 +14,12 @@ export function Screen({ navigation, children, account = false }: any) {
         onMessages={() => openSheet('messages')}
         onAccount={() =>
           account
-            ? navigation.navigate('Main', { screen: 'Dashboard' })
+            ? navigation.navigate('Main', { screen: 'Home' })
             : navigation.navigate('AccountSettings')
         }
       />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 18, gap: 20, paddingBottom: 36 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, gap: 24, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -30,5 +30,5 @@ export function Screen({ navigation, children, account = false }: any) {
 }
 
 export const Grid = ({ children }: any) => (
-  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>{children}</View>
+  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>{children}</View>
 );

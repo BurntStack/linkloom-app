@@ -16,7 +16,7 @@ export function Card({
 }) {
   const base: ViewStyle = {
     backgroundColor: C.surface,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: highlight ? C.primary : C.border,
     padding: 16,
@@ -31,7 +31,7 @@ export function Card({
         style={({ pressed }) => [
           base,
           style,
-          pressed ? { opacity: 0.95, transform: [{ scale: 0.985 }] } : null,
+          pressed ? { opacity: 0.92, transform: [{ scale: 0.985 }] } : null,
         ]}
       >
         {children}
@@ -43,12 +43,12 @@ export function Card({
 
 export function Heading({ title, sub }: { title: string; sub?: string }) {
   return (
-    <View style={{ gap: 4 }}>
+    <View style={{ gap: 6, marginBottom: 2 }}>
       <T size={TYPO.h1} w="bold" track={-0.5} color={C.text}>
         {title}
       </T>
       {sub ? (
-        <T size={TYPO.sub} color={C.muted} style={{ lineHeight: 20 }}>
+        <T size={TYPO.sub} color={C.muted} style={{ lineHeight: 21 }}>
           {sub}
         </T>
       ) : null}

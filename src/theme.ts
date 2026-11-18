@@ -23,10 +23,10 @@ const LIGHT_COLORS: Record<string, string> = {
   muted3: '#A3A3AB',
   mutedLight: '#D4D4D9',
 
-  border: '#DEDEE3',
-  border2: '#C9C9D0',
-  borderSubtle: '#F0F0F2',
-  tabBorder: '#E7E7EA',
+  border: '#E8E8ED',
+  border2: '#DFDFE6',
+  borderSubtle: '#F4F4F7',
+  tabBorder: '#EFEFF2',
 
   primary: '#7866F5',
   primaryHover: '#8D7DFF',
@@ -101,10 +101,10 @@ const DARK_COLORS: Record<string, string> = {
   muted3: '#85858F',
   mutedLight: '#66666E',
 
-  border: '#424249',
-  border2: '#515159',
-  borderSubtle: '#303037',
-  tabBorder: '#38383F',
+  border: '#32323A',
+  border2: '#404049',
+  borderSubtle: '#26262D',
+  tabBorder: '#2E2E36',
 
   primary: '#A99CFF',
   primaryHover: '#B8AEFF',
@@ -184,34 +184,34 @@ export const TYPO = {
 
 export const shadow = {
   shadowColor: '#0F172A',
-  shadowOpacity: 0.035,
-  shadowRadius: 8,
+  shadowOpacity: 0.04,
+  shadowRadius: 10,
   shadowOffset: { width: 0, height: 2 },
-  elevation: 1,
+  elevation: 2,
 };
 
 export const shadowSm = {
   shadowColor: '#0F172A',
   shadowOpacity: 0.03,
-  shadowRadius: 4,
+  shadowRadius: 6,
   shadowOffset: { width: 0, height: 1 },
   elevation: 1,
 };
 
 export const shadowMd = {
   shadowColor: '#0F172A',
-  shadowOpacity: 0.05,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 3 },
-  elevation: 2,
+  shadowOpacity: 0.07,
+  shadowRadius: 14,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 3,
 };
 
 export const shadowLg = {
   shadowColor: '#0F172A',
-  shadowOpacity: 0.08,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: 6 },
-  elevation: 4,
+  shadowOpacity: 0.09,
+  shadowRadius: 20,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 5,
 };
 
 export function inr(n: number): string {

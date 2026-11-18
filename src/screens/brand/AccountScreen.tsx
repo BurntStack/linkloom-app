@@ -6,11 +6,12 @@ import { C } from '../../theme';
 import { useApp } from '../../store';
 import { AppearanceToggle, Btn, Card, Row, T } from '../../components/ui';
 import { EmailVerification } from '../../components/ui/EmailVerification';
+import { KycProfileCard } from '../sheets/KycSheet';
 
 import { Screen } from './shared';
 
 export function AccountSettings({ navigation }: any) {
-  const { brandName, brandProfile, sessionUser, orders, conversations, openSheet, showToast, logout, logoutAll } = useApp();
+  const { brandName, brandProfile, sessionUser, orders, conversations, openSheet, openKyc, kycStatus, kycLoading, showToast, logout, logoutAll } = useApp();
   const deliverablesToReview = orders.filter((order: any) => order.stage === 'delivered').length;
   const initials = brandName?.trim()?.[0]?.toUpperCase() || 'B';
   const location = [brandProfile?.city, brandProfile?.regionState, brandProfile?.country]
@@ -91,9 +92,15 @@ export function AccountSettings({ navigation }: any) {
         {brandProfile?.businessCategory ? <T size={13} color={C.muted2}>{brandProfile.businessCategory}</T> : null}
         <Row style={{ gap: 7, flexWrap: 'wrap', justifyContent: 'center' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 99, backgroundColor: C.greenBg }}>
-            <Ionicons name="checkmark-circle-outline" size={14} color={C.green} />
+            <Ionicons name="briefcase-outline" size={14} color={C.green} />
             <T size={11} w="semi" color={C.green}>Brand account</T>
           </View>
+          {kycStatus?.status === 'verified' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 99, backgroundColor: C.greenBg }}>
+              <Ionicons name="checkmark-circle" size={14} color={C.green} />
+              <T size={11} w="semi" color={C.green}>Verified</T>
+            </View>
+          ) : null}
           <Pressable
             onPress={() => showToast('Upgrade request received — our team will contact you!')}
             style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 99, borderWidth: 1, borderColor: C.border2 }}
@@ -141,6 +148,7 @@ export function AccountSettings({ navigation }: any) {
         </Card>
       </View>
       <EmailVerification />
+      <KycProfileCard submission={kycStatus} loading={kycLoading} onPress={openKyc} />
 
       <View style={{ gap: 4 }}>
         <T size={11} w="bold" color={C.muted2} track={0.8} style={{ paddingHorizontal: 2 }}>BILLING</T>

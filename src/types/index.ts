@@ -19,6 +19,7 @@ export type Creator = {
   platform: string;
   rating: number;
   price: number;
+  verified?: boolean;
   badge?: string;
   bio: string;
   reach: string;

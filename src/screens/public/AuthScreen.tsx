@@ -32,7 +32,7 @@ export function Auth({ navigation, route }: any) {
   const [challengeId, setChallengeId] = useState('');
   const [verifiedUser, setVerifiedUser] = useState<any>(null);
   const roleAccent = role === 'creator' ? C.creatorAccent : C.brandAccent;
-  const getDestination = () => email.trim();
+  const getDestination = () => email.trim().toLowerCase();
   const validateEmail = (destination: string) => {
     if (!destination) {
       showToast('Enter your email address.');
@@ -357,6 +357,7 @@ export function Auth({ navigation, route }: any) {
             onChangeText={setPassword}
             placeholder={mode === 'signup' ? 'At least 8 characters' : 'Enter your password'}
             secure
+            secureToggle
           />
           <Btn
             label={submitting ? 'Please wait…' : mode === 'signup' ? 'Send verification code' : 'Sign in'}

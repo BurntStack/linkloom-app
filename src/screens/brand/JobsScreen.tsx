@@ -83,20 +83,20 @@ export function Jobs({ navigation }: any) {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               style={{
-                minHeight: 40,
+                minHeight: 38,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 6,
-                paddingHorizontal: 13,
-                borderRadius: 13,
+                paddingHorizontal: 14,
+                borderRadius: 12,
                 borderWidth: 1,
-                borderColor: active ? C.dark : C.border2,
+                borderColor: active ? C.dark : C.border,
                 backgroundColor: active ? C.dark : C.surface,
               }}
             >
               <Row style={{ gap: 6, alignItems: 'center' }}>
-                {active ? <Ionicons name="checkmark" size={14} color={C.onDark} /> : null}
-                <T size={13} w={active ? 'semi' : 'med'} color={active ? C.onDark : C.text}>{label}</T>
+                {active ? <Ionicons name="checkmark" size={13} color={C.onDark} /> : null}
+                <T size={12.5} w={active ? 'semi' : 'med'} color={active ? C.onDark : C.text}>{label}</T>
                 <T size={11} w="semi" color={active ? C.onDarkMuted : C.muted2}>{counts[key]}</T>
               </Row>
             </Pressable>
@@ -104,7 +104,7 @@ export function Jobs({ navigation }: any) {
         })}
       </ScrollView>
 
-      <View style={{ gap: 0 }}>
+      <View style={{ gap: 14 }}>
         {shown.map((job: any) => {
           const order = orders.find((item: any) => item.title === job.title);
           const status = job.status === 'open' ? 'Open' : job.status === 'progress' ? 'In progress' : 'Done';
@@ -121,61 +121,67 @@ export function Jobs({ navigation }: any) {
             return bid?.creatorName || creatorById(id).name;
           });
           return (
-            <View key={job.id} style={{ paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: C.borderSubtle }}>
+            <Card key={job.id} style={{ padding: 16, gap: 12 }}>
               <Pressable onPress={() => openSheet('campaigndetail', { campaignId: job.id })} accessibilityRole="button">
-                <Row style={{ alignItems: 'flex-start', gap: 11 }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-                    <T size={15} w="semi" color={C.pinkText}>
-                      {creatorNames[0] ? creatorNames[0].charAt(0) : job.title.charAt(0).toUpperCase()}
-                    </T>
+                <Row style={{ alignItems: 'flex-start', gap: 12 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: C.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="briefcase" size={20} color={C.primary} />
                   </View>
-                  <View style={{ flex: 1, gap: 5 }}>
-                    <T size={14.5} w="semi" color={C.text} numberOfLines={2}>{job.title}</T>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <T size={15} w="semi" color={C.text} numberOfLines={2}>{job.title}</T>
                     <T size={12} color={C.muted2} numberOfLines={1}>
                       {creatorNames.length ? `${creatorNames.join(', ')} · ` : ''}{job.platform}{job.deliverables ? ` · ${job.deliverables}` : ''}
                     </T>
-                    <View style={{ alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 99, backgroundColor: statusBackground }}>
-                      <T size={11} w="semi" color={statusColor}>{status}</T>
+                    <View style={{ alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, backgroundColor: statusBackground, marginTop: 2 }}>
+                      <T size={10.5} w="semi" color={statusColor}>{status}</T>
                     </View>
                   </View>
-                  <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: 108 }}>
-                    <T size={15} w="semi" color={C.text} numberOfLines={1}>
+                  <View style={{ alignItems: 'flex-end', gap: 3 }}>
+                    <T size={15} w="bold" color={C.text}>
                       {job.min === job.max ? inr(job.min) : `${inr(job.min)}–${inr(job.max)}`}
                     </T>
-                    <T size={11} color={C.muted2} numberOfLines={1}>{dateText || `${job.bidsCount} bids`}</T>
+                    <T size={11} color={C.muted2}>{dateText || `${job.bidsCount} bids`}</T>
                   </View>
                 </Row>
               </Pressable>
-              <View style={{ paddingLeft: 51, paddingTop: 10, gap: 9 }}>
+
+              <View style={{ height: 1, backgroundColor: C.borderSubtle }} />
+
+              <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                 {job.status === 'open' ? (
-                  <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                    <T size={12} w="semi" color={C.text}>{job.bidsCount} proposals</T>
-                    <Pressable onPress={() => openSheet('reviewbids', { jobId: job.id })} style={{ paddingHorizontal: 11, paddingVertical: 7, borderRadius: 99, backgroundColor: C.cta }}>
-                      <T size={11} w="semi" color={C.onCta}>Review proposals</T>
-                    </Pressable>
-                  </Row>
+                  <>
+                    <T size={12} w="semi" color={C.text}>{job.bidsCount} proposals received</T>
+                    <Row style={{ gap: 8, alignItems: 'center' }}>
+                      <Pressable onPress={() => openSheet('postjob', { editId: job.id })} hitSlop={8} accessibilityLabel={`Edit ${job.title}`}>
+                        <Ionicons name="create-outline" size={19} color={C.muted2} />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => openSheet('reviewbids', { jobId: job.id })}
+                        style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, backgroundColor: C.dark }}
+                      >
+                        <T size={11.5} w="semi" color={C.onDark}>Review bids</T>
+                      </Pressable>
+                    </Row>
+                  </>
                 ) : job.status === 'progress' ? (
-                  <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                    <T size={12} color={C.muted2} numberOfLines={1} style={{ flex: 1 }}>{job.hired ? `Creator selected · ${inr(job.escrow || 0)} held` : 'Creator hired'}</T>
-                    <Pressable onPress={() => order ? openSheet('order', { orderId: order.id }) : showToast('No order is linked to this campaign yet.')}><T size={12} w="semi" color={C.primary}>Open order</T></Pressable>
-                  </Row>
+                  <>
+                    <T size={12} color={C.muted2} numberOfLines={1} style={{ flex: 1 }}>
+                      {job.hired ? `Creator selected · ${inr(job.escrow || 0)} held` : 'Creator hired'}
+                    </T>
+                    <Pressable onPress={() => order ? openSheet('order', { orderId: order.id }) : showToast('No order is linked to this campaign yet.')}>
+                      <T size={12.5} w="semi" color={C.primary}>Open order →</T>
+                    </Pressable>
+                  </>
                 ) : (
-                  <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <>
                     <T size={12} color={C.muted2}>Campaign complete</T>
-                    <T size={12} w="semi" color={C.primary}>Details</T>
-                  </Row>
+                    <Pressable onPress={() => openSheet('campaigndetail', { campaignId: job.id })}>
+                      <T size={12.5} w="semi" color={C.primary}>Details →</T>
+                    </Pressable>
+                  </>
                 )}
-                {job.status === 'open' ? (
-                  <Row style={{ justifyContent: 'flex-end', gap: 8 }}>
-                    <Pressable onPress={() => openSheet('postjob', { editId: job.id })} hitSlop={8} accessibilityLabel={`Edit ${job.title}`}><Ionicons name="create-outline" size={18} color={C.muted2} /></Pressable>
-                    <Pressable onPress={async () => {
-                      try { await closeJob(job.id); showToast('Campaign closed.'); }
-                      catch (error) { showToast(error instanceof Error ? error.message : 'Unable to close campaign.'); }
-                    }} hitSlop={8} accessibilityLabel={`Close ${job.title} to new bids`}><Ionicons name="archive-outline" size={18} color={C.muted2} /></Pressable>
-                  </Row>
-                ) : null}
-              </View>
-            </View>
+              </Row>
+            </Card>
           );
         })}
       </View>

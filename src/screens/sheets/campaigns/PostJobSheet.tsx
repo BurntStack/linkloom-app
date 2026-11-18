@@ -15,7 +15,7 @@ import {
 } from '../campaignUtils';
 
 export function PostJob({ editId }: { editId?: string }) {
-  const { closeSheet, addJob, updateJob, showToast, jobs } = useApp();
+  const { closeSheet, addJob, updateJob, showToast, jobs, openKyc, kycStatus } = useApp();
   const existing = jobs.find((j: any) => j.id === editId);
   const existingRights = existing?.usageRights && typeof existing.usageRights === 'object'
     ? existing.usageRights as CampaignUsageRights
@@ -66,27 +66,35 @@ export function PostJob({ editId }: { editId?: string }) {
       exclusivityCategory: exclusivity === 'Yes' ? exclusivityCategory.trim() : '',
       territory: territory.trim(),
     };
-    setSaving(true);
-    try {
-      if (existing) {
-        await updateJob(existing.id, {
-          title: title.trim(), platform, description: desc.trim(), deliverables: deliverables.trim(),
-          usageRights, min, max, ...(closes ? { closes } : {}),
-        });
-        showToast('Campaign brief updated');
-      } else {
-        await addJob({
-          title: title.trim(), platform, description: desc.trim(), deliverables: deliverables.trim(),
-          usageRights, min, max, ...(closes ? { closes } : {}),
-        });
-        showToast('Campaign posted — creators will submit proposals');
+    const publish = async () => {
+      setSaving(true);
+      try {
+        if (existing) {
+          await updateJob(existing.id, {
+            title: title.trim(), platform, description: desc.trim(), deliverables: deliverables.trim(),
+            usageRights, min, max, ...(closes ? { closes } : {}),
+          });
+          showToast('Campaign brief updated');
+        } else {
+          await addJob({
+            title: title.trim(), platform, description: desc.trim(), deliverables: deliverables.trim(),
+            usageRights, min, max, ...(closes ? { closes } : {}),
+          });
+          showToast('Campaign posted — creators will submit proposals');
+        }
+        closeSheet();
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'Unable to save campaign.');
+      } finally {
+        setSaving(false);
       }
-      closeSheet();
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Unable to save campaign.');
-    } finally {
-      setSaving(false);
+    };
+
+    if (kycStatus?.status !== 'verified') {
+      openKyc();
+      return;
     }
+    await publish();
   };
 
   const stepTitles = ['The brief', 'Deliverables', 'Budget and timing', 'Review'];

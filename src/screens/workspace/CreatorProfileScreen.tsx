@@ -75,13 +75,13 @@ export function CreatorProfile({ navigation, route }: any) {
           {/* Main Profile Info Card */}
           <View style={{ gap: 16 }}>
             <Row style={{ gap: 14, alignItems: 'center' }}>
-              <Avatar name={c.name} size={72} photo={c.photo} />
+              <Avatar name={c.name} size={72} photo={c.photo} verified={c.verified} />
               <View style={{ flex: 1, gap: 4 }}>
                 <Row style={{ gap: 6, alignItems: 'center' }}>
                   <T size={23} w="semi" color={C.text}>
                     {c.name}
                   </T>
-                  <Ionicons name="checkmark-circle" size={18} color={C.blue} />
+                  {c.verified ? <Ionicons name="checkmark-circle" size={18} color={C.blue} /> : null}
                 </Row>
                 <T size={13} color={C.muted2}>
                   @{c.name.toLowerCase().replace(/\s+/g, '')} · {c.city}
