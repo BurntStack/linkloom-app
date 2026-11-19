@@ -4,18 +4,17 @@ export const USAGE_CHANNELS = [
   { label: 'Organic social', value: 'organic_social' },
   { label: 'Paid ads', value: 'paid_ads' },
   { label: 'Website', value: 'website' },
-  { label: 'Email', value: 'email' },
 ];
 
-export const USAGE_DURATIONS = ['30 days', '90 days', '1 year', 'Perpetual'];
+export const USAGE_DURATIONS = ['3 months', '6 months', '12 months', 'Perpetual'];
 export const DURATION_VALUES: Record<string, string> = {
-  '30 days': '30_days',
-  '90 days': '90_days',
-  '1 year': '1_year',
+  '3 months': '3m',
+  '6 months': '6m',
+  '12 months': '12m',
   Perpetual: 'perpetual',
-  '30_days': '30 days',
-  '90_days': '90 days',
-  '1_year': '1 year',
+  '3m': '3 months',
+  '6m': '6 months',
+  '12m': '12 months',
   perpetual: 'Perpetual',
 };
 

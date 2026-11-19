@@ -6,6 +6,10 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#FFFFFF",
+    "ios": {
+      "bundleIdentifier": "com.brandside.app",
+      "supportsTablet": true
+    },
     "android": {
       "package": "com.brandside.app",
       "adaptiveIcon": {

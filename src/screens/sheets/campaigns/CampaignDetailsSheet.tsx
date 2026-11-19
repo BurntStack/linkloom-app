@@ -17,11 +17,15 @@ export function CampaignDetails({ campaignId }: { campaignId: string }) {
 
   if (!campaign) return <Sheet visible onClose={closeSheet} title="Campaign"><T size={12} color={C.muted}>Loading campaign…</T></Sheet>;
 
-  const stageIndex = campaign.status === 'open' ? (campaign.bidsCount ? 1 : 0) : campaign.status === 'progress' ? 2 : 3;
+  const stageIndex = campaign.status === 'draft' ? 0 : campaign.status === 'open' ? (campaign.bidsCount ? 1 : 0) : campaign.status === 'progress' ? 2 : 3;
   const stages = ['Posted', 'Proposals', 'Creator selected', 'Complete'];
-  const statusLabel = campaign.status === 'open' ? 'Open for proposals' : campaign.status === 'progress' ? 'In progress' : 'Completed';
-  const statusColor = campaign.status === 'open' ? C.green : campaign.status === 'progress' ? C.primary : C.muted2;
-  const statusBg = campaign.status === 'open' ? C.greenBg : campaign.status === 'progress' ? C.primaryLight : C.surfaceSoft;
+  const statusLabel = campaign.status === 'draft'
+    ? 'Draft'
+    : campaign.status === 'open'
+      ? 'Open for proposals'
+      : campaign.status === 'progress' ? 'In progress' : 'Completed';
+  const statusColor = campaign.status === 'draft' ? C.amber : campaign.status === 'open' ? C.green : campaign.status === 'progress' ? C.primary : C.muted2;
+  const statusBg = campaign.status === 'draft' ? C.amberBg : campaign.status === 'open' ? C.greenBg : campaign.status === 'progress' ? C.primaryLight : C.surfaceSoft;
 
   return (
     <Sheet visible onClose={closeSheet} title="Campaign" sub={`${statusLabel} · ${campaign.platform}`}>
@@ -89,6 +93,13 @@ export function CampaignDetails({ campaignId }: { campaignId: string }) {
           <T size={11} color={C.muted2}>Usage rights</T>
           <T size={12} w="semi" color={C.text}>{formatCampaignUsageRights(campaign.usageRights)}</T>
         </Card>
+        {campaign.moderationStatus ? (
+          <Card style={{ gap: 4, padding: 15 }}>
+            <T size={11} color={C.muted2}>Moderation</T>
+            <T size={12} w="semi" color={C.text}>{String(campaign.moderationStatus).replace(/_/g, ' ')}</T>
+            {campaign.moderationReason ? <T size={12} color={C.muted2}>{campaign.moderationReason}</T> : null}
+          </Card>
+        ) : null}
       </View>
       {campaign.status === 'open' ? (
         <Btn label={`Review ${campaign.bidsCount} proposals`} icon="people-outline" onPress={() => openSheet('reviewbids', { jobId: campaign.id })} />

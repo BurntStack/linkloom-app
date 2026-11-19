@@ -16,7 +16,7 @@ export function Dashboard({ navigation }: any) {
   const jobsForReview = jobs.filter((job: any) => job.status === 'open' && job.bidsCount > 0);
   const ordersForApproval = orders.filter((order: any) => order.stage === 'delivered');
   const attentionCount = jobsForReview.length + ordersForApproval.length;
-  const activeJobs = jobs.filter((job: any) => job.status !== 'completed').length;
+  const activeJobs = jobs.filter((job: any) => job.status === 'open' || job.status === 'progress').length;
 
   const Stat = ({
     label,

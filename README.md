@@ -10,14 +10,15 @@ The app connects to the Linkloom API for authentication, profiles, creator disco
    ```
    npm install
    npx expo install --check
-   npx expo start --go
+   npm start
    ```
 4. Scan the QR code with Expo Go (phone + computer on the same Wi-Fi).
-   - Different networks / firewall: `npx expo start --tunnel --go`
+   - Different networks / firewall: `npm run tunnel`
+   - Google sign-in: build and open the native development app with `npm run android`, then start Metro with `npm run tunnel:dev`.
    - Android emulator instead: `npx expo start --android --go`
 
 `expo install --check` verifies that native package versions match this project's Expo SDK; it does not upgrade the project to match a different Expo Go release.
-Email/password signup and login can be tested in Expo Go. Signup sends a verification code to the supplied email; Google sign-in requires a development build.
+The `start` and `tunnel` scripts explicitly launch Expo Go, even though this project also includes a development client. Email/password signup and login can be tested in Expo Go. Signup sends a verification code to the supplied email. Google sign-in uses native code and requires the Linkloom development build; it cannot run in Expo Go.
 
 ## Try these flows
 - Welcome slides -> choose Creator or Brand -> sign up with email/password or log in with email/password
@@ -42,10 +43,11 @@ Email/password signup and login can be tested in Expo Go. Signup sends a verific
 - Configure the API host with `EXPO_PUBLIC_API_URL`; the default is `https://collab-api-ewju.onrender.com`. `VITE_API_URL` is not read by this Expo app.
 - Signup requests an email verification code through `/v1/auth/otp/request/`; verification returns the session, then signup completion sends the role-specific details and password. Login uses email and password.
 - Google sign-in sends a Google ID token to `/v1/auth/google/`. It requires an Android OAuth client for package `com.brandside.app` and the build certificate SHA-1, a Web OAuth client ID, and an Expo development build; it does not work in Expo Go.
+- For an installed iOS build, set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` to the iOS OAuth client ID and `GOOGLE_IOS_URL_SCHEME` to its reversed client ID (`com.googleusercontent.apps.…`) before building. The latter adds the native Google sign-in callback scheme through `app.config.js`. Register the iOS bundle ID `com.brandside.app` with Google. Rebuild the app after changing either value. Email signup and password login do not need these Google settings.
 - The client stores access and refresh tokens with Expo SecureStore, refreshes access tokens, reads the `{ success, data, error, meta }` envelope, and converts rupees to/from paise at API boundaries.
 - Campaign requests send lowercase platform codes (for example `instagram`) and structured `usageRights` with `duration`, `channels`, `exclusivity`, `exclusivityCategory`, and `territory`; the campaign form collects these separately instead of sending a free-text string.
-- Profile photos can be selected locally, but the supplied contract has no upload endpoint or writable avatar field. The selected image will not be available on other devices or after reinstall.
-- Conversations and the brand-first messaging restriction are currently app-local. The contract has no conversation/message endpoints, so messages are not delivered or persisted on the server.
+- Creator profile photos are uploaded through `/v1/creators/me/avatar/` when the profile is saved. Confirm this against the deployed API before release.
+- Conversations and messages use `/v1/conversations/` endpoints. Confirm delivery and the brand-first restriction against the deployed API before release.
 - Campaign creation only sends documented fields. City/category/language campaign fields and campaign-filter query parameters are absent from the supplied contract, so those filters cannot be guaranteed to work against server data.
 - Package management, cart, checkout-session creation, payment verification, payout/withdrawal, and analytics/export endpoints are available. The app does not yet present the returned Razorpay session in a payment UI, so checkout cannot be completed in-app; reporting is limited to the documented order data.
 - Creator date of birth, gender, languages, and platform handles are not writable through the documented creator profile endpoint. Do not treat those local form fields as server-persisted.

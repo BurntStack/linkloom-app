@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../../theme';
@@ -16,6 +17,7 @@ import {
 } from '../../api';
 
 const GOOGLE_WEB_CLIENT_ID = '591280470035-mamos86blk66gpr7bufpv48ln9dntsef.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
 export function Auth({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
@@ -107,11 +109,21 @@ export function Auth({ navigation, route }: any) {
 
   const signInWithGoogle = async () => {
     if (submitting) return;
+    if (Constants.executionEnvironment === 'storeClient') {
+      showToast('Google sign-in requires the Linkloom development build. Open that app instead of Expo Go.');
+      return;
+    }
     setSubmitting(true);
     try {
       const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
-      GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      if (Platform.OS === 'ios' && !GOOGLE_IOS_CLIENT_ID) {
+        throw new Error('Google sign-in needs an iOS OAuth client ID in this build.');
+      }
+      GoogleSignin.configure({
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        ...(GOOGLE_IOS_CLIENT_ID ? { iosClientId: GOOGLE_IOS_CLIENT_ID } : {}),
+      });
+      if (Platform.OS === 'android') await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const response = await GoogleSignin.signIn();
       if (response.type === 'cancelled') return;
       if (response.type !== 'success') throw new Error('Google sign-in did not complete.');

@@ -43,8 +43,9 @@ export function CreatorSetup({ navigation, route }: any) {
     return new Date();
   })();
 
-  const handleDateChange = (_event: unknown, selectedDate: Date) => {
-    setShowDatePicker(false);
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (event.type === 'dismissed' || !selectedDate) return;
     const year = selectedDate.getFullYear();
     const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
     const day = String(selectedDate.getDate()).padStart(2, '0');
@@ -215,7 +216,7 @@ export function CreatorSetup({ navigation, route }: any) {
         <Field label="Instagram handle or URL" value={instagram} onChangeText={setInstagram} placeholder="@yourhandle or https://…" />
         <Field label="YouTube handle or URL" value={youtube} onChangeText={setYoutube} placeholder="@yourchannel or https://…" />
         <Field label="Other platform" value={other} onChangeText={setOther} placeholder="TikTok, LinkedIn, etc." />
-        <T size={11} color={C.muted}>Profile photo selection is ready; backend upload will be enabled once the API endpoint is provided. KYC details are handled separately.</T>
+        <T size={11} color={C.muted}>Profile photos are uploaded when you save. KYC details are handled separately.</T>
         <Btn label={editing ? 'Save profile' : 'Save and open creator workspace'} onPress={save} />
       </ScrollView>
     </View>

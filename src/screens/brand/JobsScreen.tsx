@@ -8,7 +8,7 @@ import { Card, Row, T } from '../../components/ui';
 import { creatorById } from '../../data';
 import { Screen } from './shared';
 
-type JobTab = 'all' | 'open' | 'progress' | 'completed';
+type JobTab = 'all' | 'open' | 'draft' | 'progress' | 'completed';
 
 export function Jobs({ navigation }: any) {
   const { jobs, orders, openSheet, closeJob, refreshCampaigns, showToast } = useApp();
@@ -24,12 +24,14 @@ export function Jobs({ navigation }: any) {
   const counts: Record<JobTab, number> = {
     all: jobs.length,
     open: jobs.filter((job: any) => job.status === 'open').length,
+    draft: jobs.filter((job: any) => job.status === 'draft').length,
     progress: jobs.filter((job: any) => job.status === 'progress').length,
     completed: jobs.filter((job: any) => job.status === 'completed').length,
   };
   const tabs: { key: JobTab; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'open', label: 'Open' },
+    { key: 'draft', label: 'Drafts' },
     { key: 'progress', label: 'In progress' },
     { key: 'completed', label: 'Done' },
   ];
@@ -107,9 +109,9 @@ export function Jobs({ navigation }: any) {
       <View style={{ gap: 14 }}>
         {shown.map((job: any) => {
           const order = orders.find((item: any) => item.title === job.title);
-          const status = job.status === 'open' ? 'Open' : job.status === 'progress' ? 'In progress' : 'Done';
-          const statusColor = job.status === 'open' ? C.green : job.status === 'progress' ? C.primary : C.muted2;
-          const statusBackground = job.status === 'open' ? C.greenBg : job.status === 'progress' ? C.primaryLight : C.surfaceSoft;
+          const status = job.status === 'open' ? 'Open' : job.status === 'draft' ? 'Draft' : job.status === 'progress' ? 'In progress' : 'Done';
+          const statusColor = job.status === 'open' ? C.green : job.status === 'draft' ? C.amber : job.status === 'progress' ? C.primary : C.muted2;
+          const statusBackground = job.status === 'open' ? C.greenBg : job.status === 'draft' ? C.amberBg : job.status === 'progress' ? C.primaryLight : C.surfaceSoft;
           const parsedCloseDate = job.closes ? new Date(job.closes) : null;
           const dateText = job.closes?.startsWith('Closes in ')
             ? job.closes
@@ -162,6 +164,13 @@ export function Jobs({ navigation }: any) {
                         <T size={11.5} w="semi" color={C.onDark}>Review bids</T>
                       </Pressable>
                     </Row>
+                  </>
+                ) : job.status === 'draft' ? (
+                  <>
+                    <T size={12} color={C.muted2}>Saved as a draft until you publish</T>
+                    <Pressable onPress={() => openSheet('postjob', { editId: job.id })}>
+                      <T size={12.5} w="semi" color={C.primary}>Edit draft →</T>
+                    </Pressable>
                   </>
                 ) : job.status === 'progress' ? (
                   <>

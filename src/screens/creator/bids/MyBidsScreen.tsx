@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import { AppState } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Btn, Card, Field, Heading, Row, T } from '../../../components/ui';
@@ -9,18 +11,22 @@ import { Empty, Page } from '../shared';
 type BidFilter = 'waiting' | 'won' | 'closed';
 
 function bidGroup(status: unknown): BidFilter {
-  const value = String(status || '').toLowerCase();
-  if (['accepted', 'hired', 'won'].some((word) => value.includes(word))) return 'won';
-  if (['rejected', 'declined', 'withdrawn', 'cancelled', 'closed', 'not_picked', 'not picked', 'completed', 'approved', 'released', 'paid'].some((word) => value.includes(word))) return 'closed';
+  const value = String(status || '').toLowerCase().replace(/[\s-]+/g, '_');
+  if (['accepted', 'hired', 'won', 'selected', 'awarded', 'confirmed', 'pending_payment', 'awaiting_payment'].some((word) => value.includes(word))) return 'won';
+  if (['rejected', 'declined', 'withdrawn', 'cancelled', 'closed', 'not_picked', 'not_selected', 'unsuccessful', 'completed', 'approved', 'released', 'paid', 'expired'].some((word) => value.includes(word))) return 'closed';
   return 'waiting';
 }
 
 function statusLabel(status: unknown) {
-  const value = String(status || '').toLowerCase();
-  if (['accepted', 'hired', 'won', 'completed', 'approved', 'released'].some((word) => value.includes(word))) return 'Approved and paid';
+  const value = String(status || '').toLowerCase().replace(/[\s-]+/g, '_');
+  if (['pending_payment', 'awaiting_payment'].some((word) => value.includes(word))) return 'Accepted · awaiting brand payment';
+  if (['accepted', 'hired', 'won', 'selected', 'awarded', 'confirmed'].some((word) => value.includes(word))) return 'Accepted by brand';
+  if (value === 'paid') return 'Paid';
+  if (['completed', 'approved', 'released'].some((word) => value.includes(word))) return 'Completed';
   if (value.includes('withdraw')) return 'Withdrawn';
   if (value.includes('reject') || value.includes('declin') || value.includes('not_picked') || value.includes('not picked')) return 'Not picked';
   if (value.includes('cancel')) return 'Cancelled';
+  if (value.includes('view')) return 'Viewed by brand';
   return String(status || 'Closed');
 }
 
@@ -79,11 +85,11 @@ function BidCard({
   const group = bidGroup(bid.status);
   const submittedLabel = bid.submittedAt ? `Sent ${new Date(bid.submittedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'Waiting for the brand';
   const isEditable = ['pending', 'submitted'].includes(String(bid.status).toLowerCase());
-  const isWithdrawable = !['withdrawn', 'accepted'].includes(String(bid.status).toLowerCase());
+  const isWithdrawable = group === 'waiting';
 
   if (group === 'closed') {
     const label = statusLabel(bid.status);
-    const paid = label === 'Approved and paid';
+    const paid = label === 'Paid';
     const priceStyle = label === 'Not picked' || label === 'Withdrawn'
       ? { color: C.muted3, textDecorationLine: 'line-through' as const }
       : { color: C.text };
@@ -142,14 +148,42 @@ function BidCard({
 }
 
 export function MyBids({ navigation }: any) {
-  const { creatorProfile, creatorBids, withdrawBid, updateBid, showToast } = useApp();
+  const { creatorProfile, creatorBids, refreshCreatorBids, withdrawBid, updateBid, showToast } = useApp();
   const myBids = creatorBids.filter((bid: any) => bid.creatorId === creatorProfile?.creatorId);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshInFlight = useRef(false);
+  const refreshErrorShown = useRef(false);
   const [busyBid, setBusyBid] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState('');
   const [editMessage, setEditMessage] = useState('');
   const [editViews, setEditViews] = useState('');
   const [editDays, setEditDays] = useState('');
+  const refreshBids = useCallback(async () => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+    setRefreshing(true);
+    try {
+      await refreshCreatorBids();
+      refreshErrorShown.current = false;
+    } catch (error) {
+      if (!refreshErrorShown.current) {
+        showToast(error instanceof Error ? error.message : 'Unable to refresh your bids.');
+        refreshErrorShown.current = true;
+      }
+    } finally {
+      refreshInFlight.current = false;
+      setRefreshing(false);
+    }
+  }, [refreshCreatorBids, showToast]);
+
+  useFocusEffect(useCallback(() => {
+    void refreshBids();
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') void refreshBids();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [refreshBids]));
   const [filter, setFilter] = useState<BidFilter>('waiting');
   const tabs: { key: BidFilter; label: string }[] = [
     { key: 'waiting', label: 'Waiting' },
@@ -190,7 +224,17 @@ export function MyBids({ navigation }: any) {
 
   return (
     <Page navigation={navigation}>
-      <Heading title="My bids" />
+      <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <Heading title="My bids" />
+        <Btn
+          label={refreshing ? 'Refreshing…' : 'Refresh'}
+          icon="refresh-outline"
+          variant="outline"
+          small
+          disabled={refreshing}
+          onPress={() => void refreshBids()}
+        />
+      </Row>
       <Row style={{ borderBottomWidth: 1, borderBottomColor: C.border }}>
         {tabs.map((tab) => {
           const count = myBids.filter((bid: any) => bidGroup(bid.status) === tab.key).length;

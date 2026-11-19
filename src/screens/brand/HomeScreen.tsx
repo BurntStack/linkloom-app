@@ -44,7 +44,7 @@ export function Home({ navigation }: any) {
   ].slice(0, 3), [jobs, orders, openSheet]);
 
   const hiredCount = orders.length;
-  const activeCampaignCount = jobs.filter((job: any) => job.status !== 'completed').length;
+  const activeCampaignCount = jobs.filter((job: any) => job.status === 'open' || job.status === 'progress').length;
   const escrowTotal = orders.filter((order: any) => order.stage !== 'released').reduce(
     (sum: number, order: any) => sum + (order.held || 0), 0,
   );

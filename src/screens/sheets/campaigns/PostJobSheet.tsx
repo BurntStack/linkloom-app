@@ -38,6 +38,9 @@ export function PostJob({ editId }: { editId?: string }) {
     : '');
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState(0);
+  const [publishStatus, setPublishStatus] = useState<'open' | 'draft'>(
+    existing?.status === 'draft' ? 'draft' : 'open',
+  );
 
   const submit = async () => {
     if (!title.trim()) return showToast('Please add a campaign brief title');
@@ -58,7 +61,11 @@ export function PostJob({ editId }: { editId?: string }) {
     const parsedDeadline = parseCampaignDeadline(date);
     if (!parsedDeadline) return showToast('Enter a valid proposal deadline.');
     if (parsedDeadline.getTime() <= Date.now()) return showToast('Proposal deadline must be in the future.');
-    const closes = parsedDeadline.toISOString();
+    const closes = [
+      parsedDeadline.getFullYear(),
+      String(parsedDeadline.getMonth() + 1).padStart(2, '0'),
+      String(parsedDeadline.getDate()).padStart(2, '0'),
+    ].join('-');
     const usageRights: CampaignUsageRights = {
       duration: DURATION_VALUES[usageDuration],
       channels: usageChannels,
@@ -72,15 +79,17 @@ export function PostJob({ editId }: { editId?: string }) {
         if (existing) {
           await updateJob(existing.id, {
             title: title.trim(), platform, description: desc.trim(), deliverables: deliverables.trim(),
-            usageRights, min, max, ...(closes ? { closes } : {}),
+            usageRights, min, max, status: publishStatus, ...(closes ? { closes } : {}),
           });
-          showToast('Campaign brief updated');
+          showToast(publishStatus === 'draft' ? 'Campaign draft updated' : 'Campaign brief updated');
         } else {
           await addJob({
             title: title.trim(), platform, description: desc.trim(), deliverables: deliverables.trim(),
-            usageRights, min, max, ...(closes ? { closes } : {}),
+            usageRights, min, max, status: publishStatus, ...(closes ? { closes } : {}),
           });
-          showToast('Campaign posted — creators will submit proposals');
+          showToast(publishStatus === 'draft'
+            ? 'Campaign draft saved'
+            : 'Campaign posted — creators will submit proposals');
         }
         closeSheet();
       } catch (error) {
@@ -90,7 +99,7 @@ export function PostJob({ editId }: { editId?: string }) {
       }
     };
 
-    if (kycStatus?.status !== 'verified') {
+    if (publishStatus === 'open' && kycStatus?.status !== 'verified') {
       openKyc();
       return;
     }
@@ -159,7 +168,7 @@ export function PostJob({ editId }: { editId?: string }) {
             {step < 3 ? (
               <Btn label="Continue" flex onPress={moveNext} />
             ) : (
-              <Btn label={saving ? 'Posting…' : existing ? 'Save changes' : 'Post job'} flex onPress={submit} disabled={saving} />
+              <Btn label={saving ? 'Saving…' : existing ? 'Save changes' : publishStatus === 'draft' ? 'Save draft' : 'Post job'} flex onPress={submit} disabled={saving} />
             )}
           </Row>
         </View>
@@ -213,6 +222,12 @@ export function PostJob({ editId }: { editId?: string }) {
       {step === 3 ? (
         <View style={{ gap: 12 }}>
           <T size={11} w="bold" track={0.8} color={C.muted2}>HOW CREATORS WILL SEE IT</T>
+          <Select
+            label="Campaign status"
+            value={publishStatus === 'draft' ? 'Save as draft' : 'Publish now'}
+            options={['Publish now', 'Save as draft']}
+            onChange={(value) => setPublishStatus(value === 'Save as draft' ? 'draft' : 'open')}
+          />
           <Card style={{ gap: 12, padding: 15 }}>
             <Row style={{ justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
               <View style={{ flex: 1, gap: 3 }}>

@@ -51,7 +51,7 @@ export type CampaignUsageRights = {
   duration: string;
   channels: string[];
   exclusivity: boolean;
-  exclusivityCategory: string;
+  exclusivityCategory?: string;
   territory: string;
 };
 
@@ -60,6 +60,9 @@ export type Bid = {
   creatorId: string;
   creatorName?: string;
   creatorPhotoUrl?: string;
+  status?: string;
+  viewedAt?: string;
+  decision?: string;
   price: number;
   note: string;
   proposal?: string;
@@ -77,9 +80,11 @@ export type Job = {
   deliverables: string;
   min: number;
   max: number;
-  status: 'open' | 'progress' | 'completed';
+  status: 'open' | 'draft' | 'progress' | 'completed';
   bidsCount: number;
   closes: string;
+  moderationStatus?: string;
+  moderationReason?: string;
   bidders: string[];
   hired?: string;
   escrow?: number;

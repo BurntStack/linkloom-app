@@ -4,24 +4,75 @@ import { paiseToRupees, type BrandOnboarding } from '../api';
 
 export const moneyInRupees = (value: any) => {
   if (typeof value === 'number') return paiseToRupees(value);
+  if (typeof value?.paise === 'number') return paiseToRupees(value.paise);
   if (typeof value?.amount === 'number') return paiseToRupees(value.amount);
   return 0;
 };
+
+function stringList(value: unknown): string[] {
+  const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [];
+  return values
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function creatorPlatforms(value: unknown): CreatorAccountProfile['platforms'] {
+  const toPlatform = (name: unknown, account: unknown) => {
+    const record = account && typeof account === 'object'
+      ? account as Record<string, unknown>
+      : undefined;
+    const platformName = typeof name === 'string' && name.trim()
+      ? name
+      : record?.name || record?.platform;
+    if (typeof platformName !== 'string' || !platformName.trim()) return null;
+    const handle = typeof account === 'string'
+      ? account
+      : record?.handle || record?.username || record?.url;
+    return {
+      name: platformName.trim(),
+      handle: typeof handle === 'string' ? handle : '',
+    };
+  };
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => {
+      const platform = typeof item === 'string'
+        ? toPlatform(item, undefined)
+        : toPlatform(undefined, item);
+      return platform ? [platform] : [];
+    });
+  }
+  if (!value || typeof value !== 'object') return [];
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.name === 'string' || typeof record.platform === 'string') {
+    const platform = toPlatform(undefined, record);
+    return platform ? [platform] : [];
+  }
+  return Object.entries(record).flatMap(([name, account]) => {
+    const platform = toPlatform(name, account);
+    return platform ? [platform] : [];
+  });
+}
 
 export function mapCampaign(source: any): Job {
   source = source?.campaign || source?.job || source;
   const status = String(source.status || 'open').toLowerCase();
   const platform = String(source.platform || '');
+  const moderation = source.moderation || {};
   return {
     id: String(source.id),
     title: source.title || '',
-    platform: ({ instagram: 'Instagram', youtube: 'YouTube', ugc: 'UGC' } as Record<string, string>)[platform.toLowerCase()] || platform,
+    platform: ({ instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', ugc: 'UGC' } as Record<string, string>)[platform.toLowerCase()] || platform,
     deliverables: source.deliverables || '',
     min: moneyInRupees(source.budgetMin ?? source.budget_min),
     max: moneyInRupees(source.budgetMax ?? source.budget_max),
-    status: status === 'completed' || status === 'closed' ? 'completed' : status === 'progress' || status === 'in_progress' ? 'progress' : 'open',
-    bidsCount: source.bidsCount ?? source.bids_count ?? 0,
+    status: status === 'draft' ? 'draft' : status === 'completed' || status === 'closed' ? 'completed' : status === 'progress' || status === 'in_progress' ? 'progress' : 'open',
+    bidsCount: source.bidCount ?? source.bid_count ?? source.bidsCount ?? source.bids_count ?? 0,
     closes: source.closesAt || source.closes_at || '',
+    moderationStatus: source.moderationStatus || source.moderation_status || moderation.status,
+    moderationReason: source.moderationReason || source.moderation_reason || moderation.reason || '',
     bidders: [],
     bids: [],
     description: source.brief || '',
@@ -36,11 +87,22 @@ export function mapBid(source: any): Bid {
   source = source?.bid || source?.proposal || source?.application || source;
   const creator = source.creator || {};
   const price = source.price?.amount ?? source.price;
+  const decision = source.decisionStatus || source.decision_status || source.decision;
+  const viewedAt = source.viewedAt || source.viewed_at || source.seenAt || source.seen_at;
+  const hasBeenViewed = source.viewed === true || source.isViewed === true || source.is_viewed === true ||
+    source.viewedByBrand === true || source.viewed_by_brand === true ||
+    source.brandViewed === true || source.brand_viewed === true || Boolean(viewedAt);
+  const status = typeof decision === 'string' && decision
+    ? decision
+    : hasBeenViewed ? 'viewed' : source.status || source.bidStatus || source.bid_status;
   return {
     id: String(source.id || source.bidId || source.bid_id || ''),
     creatorId: String(source.creatorId ?? source.creator_id ?? creator.id ?? ''),
     creatorName: source.creatorName || source.creator_name || creator.displayName || creator.display_name || creator.name || 'Creator',
     creatorPhotoUrl: source.creatorPhotoUrl || source.creator_photo_url || creator.avatarUrl || creator.avatar_url,
+    status: typeof status === 'string' ? status : undefined,
+    viewedAt,
+    decision: typeof decision === 'string' ? decision : undefined,
     price: typeof price === 'number' ? paiseToRupees(price) : 0,
     note: source.message || '',
     proposal: source.message || '',
@@ -124,14 +186,21 @@ export function listCreatorIds(list: any): string[] {
 }
 
 export function mapBrandProfile(source: any): BrandOnboarding {
-  const profile = source.brand || source.profile || source;
+  const record = source && typeof source === 'object' ? source : {};
+  const profile = record.brand || record.profile || record.brandProfile || record.brand_profile || record;
   return {
-    brandName: profile.name || '',
-    businessCategory: profile.industry || '',
-    geographicalScope: '',
-    regionState: profile.stateCode || '',
+    brandName: profile.name || profile.brandName || profile.brand_name || '',
+    businessCategory: profile.industry || profile.businessCategory || profile.business_category || '',
+    geographicalScope: profile.geographicalScope || profile.geographical_scope || '',
+    regionState: profile.regionState || profile.region_state || profile.stateCode || profile.state_code || '',
     termsAccepted: true,
-    brandWebsite: profile.website || '',
+    city: profile.city || '',
+    country: profile.country || '',
+    firstName: profile.firstName || profile.first_name || '',
+    lastName: profile.lastName || profile.last_name || '',
+    mobile: profile.mobile || profile.phone || '',
+    brandWebsite: profile.website || profile.brandWebsite || profile.brand_website || '',
+    brandLogo: profile.logoUrl || profile.logo_url || profile.brandLogo || profile.brand_logo || '',
     legalName: profile.legalName || profile.legal_name || '',
     gstin: profile.gstin || '',
     stateCode: profile.stateCode || profile.state_code || '',
@@ -140,21 +209,22 @@ export function mapBrandProfile(source: any): BrandOnboarding {
 }
 
 export function mapCreatorProfile(source: any): CreatorAccountProfile {
-  const profile = source.creator || source.profile || source;
+  const record = source && typeof source === 'object' ? source : {};
+  const profile = record.creator || record.profile || record.creatorProfile || record.creator_profile || record;
   const platform = profile.primaryPlatform || profile.primary_platform;
   return {
     creatorId: String(profile.id || profile.creatorId || profile.creator_id || ''),
-    name: profile.displayName || profile.display_name || profile.name || '',
+    name: profile.displayName || profile.display_name || profile.fullName || profile.full_name || profile.name || '',
     email: profile.email || '',
     mobile: profile.phone || profile.mobile || '',
     dateOfBirth: profile.dob || profile.dateOfBirth || profile.date_of_birth || '',
     gender: profile.gender || '',
     city: profile.location || profile.city || '',
     photoUrl: profile.avatarUrl || profile.avatar_url || profile.photoUrl || profile.photo_url || '',
-    languages: profile.languages || [],
+    languages: stringList(profile.languages),
     bio: profile.bio || '',
-    platforms: profile.socialAccounts || profile.social_accounts || profile.platforms || (platform ? [{ name: platform, handle: '' }] : []),
-    categories: profile.categories || [],
+    platforms: creatorPlatforms(profile.socialAccounts || profile.social_accounts || profile.platforms || (platform ? [{ name: platform, handle: '' }] : [])),
+    categories: stringList(profile.categories),
     primaryPlatform: platform,
     repliesWithin: profile.repliesWithin || profile.replies_within,
   };

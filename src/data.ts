@@ -63,4 +63,4 @@ export const LISTS = [
 ];
 
 export const CATEGORIES = ['Beauty', 'Fashion', 'Food', 'Tech', 'Fitness', 'Lifestyle', 'Travel', 'UGC', 'Comedy', 'Gaming'];
-export const PLATFORMS = ['Instagram', 'YouTube', 'UGC'];
+export const PLATFORMS = ['Instagram', 'YouTube', 'TikTok'];

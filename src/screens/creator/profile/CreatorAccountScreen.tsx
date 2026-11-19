@@ -71,10 +71,10 @@ export function CreatorAccount({ navigation }: any) {
         <KycProfileCard submission={kycStatus} loading={kycLoading} onPress={openKyc} />
         <Heading title="Creator profile" sub="This information helps brands understand your work and content." />
         <Card style={{ gap: 11 }}>
-          <Info label="Categories" value={creatorProfile?.categories?.join(', ') || 'Not added'} />
-          <Info label="Languages" value={creatorProfile?.languages?.join(', ') || 'Not added'} />
+          <Info label="Categories" value={Array.isArray(creatorProfile?.categories) ? creatorProfile.categories.join(', ') || 'Not added' : 'Not added'} />
+          <Info label="Languages" value={Array.isArray(creatorProfile?.languages) ? creatorProfile.languages.join(', ') || 'Not added' : 'Not added'} />
           <Info label="Typical reply time" value={creatorProfile?.repliesWithin ? `${creatorProfile.repliesWithin} hours` : 'Not added'} />
-          {(creatorProfile?.platforms || []).map((platform) => <Info key={platform.name} label={platform.name} value={platform.handle || 'Handle not added'} />)}
+          {(Array.isArray(creatorProfile?.platforms) ? creatorProfile.platforms : []).map((platform) => <Info key={platform.name} label={platform.name} value={platform.handle || 'Handle not added'} />)}
         </Card>
         <Btn label="Edit profile" icon="create-outline" onPress={() => navigation.navigate('CreatorSetup', { edit: true })} />
         <Pressable

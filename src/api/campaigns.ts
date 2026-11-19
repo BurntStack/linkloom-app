@@ -12,7 +12,7 @@ function apiUsageRights(rights?: CampaignUsageRights) {
 }
 
 export async function getCampaigns(cursor?: string, filters: {
-  platform?: string; category?: string; budgetMin__gte?: number; budgetMax__lte?: number; search?: string;
+  status?: 'open' | 'draft'; platform?: string; category?: string; budgetMin__gte?: number; budgetMax__lte?: number; search?: string;
 } = {}) {
   const { budgetMin__gte, budgetMax__lte, ...otherFilters } = filters;
   return requestPage<any>(`/v1/campaigns/${queryString({
@@ -25,7 +25,7 @@ export async function getCampaigns(cursor?: string, filters: {
 
 export async function createCampaign(input: {
   title: string; brief: string; platform: string; deliverables: string; budgetMin: number; budgetMax: number;
-  closesAt?: string; usageRights?: CampaignUsageRights;
+  closesAt?: string; status?: 'open' | 'draft'; usageRights?: CampaignUsageRights;
 }) {
   const { usageRights, ...campaign } = input;
   return request<any>('/v1/campaigns/', {
@@ -35,6 +35,7 @@ export async function createCampaign(input: {
       platform: input.platform.trim().toLowerCase(),
       budgetMin: rupeesToPaise(input.budgetMin),
       budgetMax: rupeesToPaise(input.budgetMax),
+      status: input.status || 'open',
       ...(usageRights ? { usageRights: apiUsageRights(usageRights) } : {}),
     }),
   });
@@ -46,7 +47,7 @@ export async function getCampaign(id: string) {
 
 export async function updateCampaign(id: string, input: Partial<{
   title: string; brief: string; platform: string; deliverables: string; budgetMin: number; budgetMax: number;
-  closesAt: string; usageRights: CampaignUsageRights;
+  closesAt: string; status: 'open' | 'draft'; usageRights: CampaignUsageRights;
 }>) {
   const { usageRights, ...campaign } = input;
   const body = {
@@ -54,6 +55,7 @@ export async function updateCampaign(id: string, input: Partial<{
     ...(input.platform ? { platform: input.platform.trim().toLowerCase() } : {}),
     ...(input.budgetMin !== undefined ? { budgetMin: rupeesToPaise(input.budgetMin) } : {}),
     ...(input.budgetMax !== undefined ? { budgetMax: rupeesToPaise(input.budgetMax) } : {}),
+    ...(input.status ? { status: input.status } : {}),
     ...(usageRights ? { usageRights: apiUsageRights(usageRights) } : {}),
   };
   return request<any>(`/v1/campaigns/${encodeURIComponent(id)}/`, { method: 'PATCH', body: JSON.stringify(body) });

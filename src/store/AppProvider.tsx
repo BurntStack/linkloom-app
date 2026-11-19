@@ -250,6 +250,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const reset = (routes: any[]) =>
     navRef.isReady() && navRef.dispatch(CommonActions.reset({ index: routes.length - 1, routes }));
 
+  const profileSetupRoute = (role: AuthRole, user: any) => role === 'creator'
+    ? {
+        name: 'CreatorSetup',
+        params: {
+          initialName: user.fullName || user.full_name || '',
+          phone: user.phone || user.mobile || '',
+          user,
+        },
+      }
+    : { name: 'Onboarding', params: { user } };
+
   const login = (role: AuthRole, user?: any, profile?: BrandOnboarding | CreatorAccountProfile) => {
     setLoggedIn(true);
     setAccountRole(role);
@@ -336,7 +347,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setJobs((previous) => previous.map((item) => item.id === campaign.id ? { ...item, ...campaign } : item));
     return campaign;
   };
-  const refreshCreatorBids = async (creatorId = creatorProfile?.creatorId || '') => {
+  const refreshCreatorBids = useCallback(async (creatorId = creatorProfile?.creatorId || '') => {
     const items: any[] = [];
     const seenCursors = new Set<string>();
     let cursor: string | undefined;
@@ -351,20 +362,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const campaign = item.campaign || item.job || item;
       const bidSource = item.bid || item.myBid || item.my_bid || item.proposal || item.application ||
         campaign.myBid || campaign.my_bid || campaign.bid || item;
+      const bid = mapBid(bidSource);
       return {
-        ...mapBid(bidSource),
+        ...bid,
         creatorId: String(creatorId || bidSource.creatorId || bidSource.creator_id || bidSource.creator?.id || ''),
         jobId: String(
           bidSource.campaignId || bidSource.campaign_id || bidSource.jobId || bidSource.job_id ||
           campaign.id || item.campaignId || item.campaign_id || '',
         ),
         jobTitle: campaign.title || bidSource.campaignTitle || bidSource.campaign_title || bidSource.jobTitle || 'Campaign',
-        status: bidSource.status || 'Submitted',
+        status: bid.status || 'Submitted',
       };
     });
     setCreatorBids(bids);
     return bids;
-  };
+  }, [creatorProfile?.creatorId]);
   const refreshCreatorPackages = async () => {
     const items: any[] = [];
     let cursor: string | undefined;
@@ -780,15 +792,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!(await hasSavedSession())) return;
       const user = await getCurrentUser();
       const role: AuthRole = user.role === 'creator' ? 'creator' : 'brand';
-      if (role === 'creator') {
-        const profile = await loadCreatorProfile();
-        login(role, user, profile);
-        await initializeWorkspace(role, role === 'creator' ? (profile as CreatorAccountProfile).creatorId : undefined);
-      } else {
-        const profile = await loadBrandProfile();
-        login(role, user, profile);
-        await initializeWorkspace(role);
+      if (user.needsOnboarding) {
+        reset([profileSetupRoute(role, user)]);
+        return;
       }
+      let profile: BrandOnboarding | CreatorAccountProfile;
+      try {
+        profile = role === 'creator' ? await loadCreatorProfile() : await loadBrandProfile();
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) throw error;
+        reset([profileSetupRoute(role, user)]);
+        return;
+      }
+      login(role, user, profile);
+      await initializeWorkspace(role, role === 'creator' ? (profile as CreatorAccountProfile).creatorId : undefined);
     } catch (error) {
       if ((error as any)?.status !== 401) showToast(error instanceof Error ? error.message : 'Unable to restore your session.');
     }
@@ -904,7 +921,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else navRef.navigate('CreatorProfile', { id });
   };
 
-  const addJob = async (input: Partial<Job>) => performVerifiedAction('publish a campaign', async () => {
+  const addJob = async (input: Partial<Job>) => {
+    const create = async () => {
     const response = await createCampaign({
       title: input.title || '',
       brief: input.description || input.deliverables || '',
@@ -913,13 +931,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       budgetMin: input.min || 0,
       budgetMax: input.max || 0,
       closesAt: input.closes || undefined,
+      status: input.status === 'draft' ? 'draft' : 'open',
       usageRights: input.usageRights && typeof input.usageRights === 'object' ? input.usageRights : undefined,
     });
     const job = mapCampaign(response.campaign || response);
     setJobs((previous) => [job, ...previous.filter((item) => item.id !== job.id)]);
     return job;
-  });
-  const updateJob = async (id: string, patch: Partial<Job>) => performVerifiedAction('update a campaign', async () => {
+    };
+    return input.status === 'draft' ? create() : performVerifiedAction('publish a campaign', create);
+  };
+  const updateJob = async (id: string, patch: Partial<Job>) => {
+    const update = async () => {
     const response = await updateCampaign(id, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(patch.description !== undefined ? { brief: patch.description } : {}),
@@ -928,12 +950,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...(patch.min !== undefined ? { budgetMin: patch.min } : {}),
       ...(patch.max !== undefined ? { budgetMax: patch.max } : {}),
       ...(patch.closes !== undefined ? { closesAt: patch.closes } : {}),
+      ...(patch.status === 'draft' || patch.status === 'open' ? { status: patch.status } : {}),
       ...(patch.usageRights && typeof patch.usageRights === 'object' ? { usageRights: patch.usageRights } : {}),
     });
     const updated = mapCampaign(response.campaign || response);
     setJobs((previous) => previous.map((job) => job.id === id ? { ...job, ...updated } : job));
     return updated;
-  });
+    };
+    return patch.status === 'draft' ? update() : performVerifiedAction('update a campaign', update);
+  };
   const closeJob = async (id: string) => performVerifiedAction('close a campaign', async () => {
     await closeCampaign(id);
     setJobs((previous) => previous.map((job) => job.id === id ? { ...job, status: 'completed' } : job));
